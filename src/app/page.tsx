@@ -15,6 +15,7 @@ interface CategoryCounts {
   [key: string]: number | undefined;
   all: number;
   upsc: number;
+  'current-affairs': number;
   economy: number;
   science: number;
   world?: number;
@@ -26,7 +27,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, economy: 0, science: 0, world: 0 });
+  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);

@@ -168,6 +168,13 @@ async function extractImage(item: any, title: string, category: string): Promise
   return resolveContextualImage(title, category);
 }
 
+// Auto-tagging engine for Current Affairs
+function isCurrentAffairs(title: string, snippet: string): boolean {
+  const text = (title + ' ' + snippet).toLowerCase();
+  const keywords = ["scheme", "yojana", "mou", "bilateral", "summit", "gdp", "isro", "drdo", "cabinet", "policy", "amendment", "defence exercise", "अभ्यास", "योजना", "समझौता", "शिखर सम्मेलन", "सहमति पत्र", "करेंट अफेयर्स"];
+  return keywords.some(kw => text.includes(kw));
+}
+
 // Helper to slugify titles for deduplication
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -183,7 +190,7 @@ export async function GET(request: Request) {
   const isPastDate = dateStr && dateStr !== todayStr;
 
   let allItems: NewsItem[] = [];
-  const counts = { all: 0, upsc: 0, economy: 0, science: 0, world: 0 };
+  const counts: Record<string, number> = { all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0 };
   const lastUpdated = new Date().toISOString();
 
   try {
@@ -238,17 +245,21 @@ export async function GET(request: Request) {
           feed.items.forEach((item) => {
             const rawSnippet = item.description || item.contentSnippet || item['content:encoded'] || '';
             const articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
+            const snippetText = processSnippet(rawSnippet);
+            
+            const isCA = isCurrentAffairs(articleTitle, snippetText);
+            const finalCategory = isCA ? 'current-affairs' : category;
             
             parsePromises.push(
-              extractImage(item, articleTitle, category).then(thumbnail => ({
+              extractImage(item, articleTitle, finalCategory).then(thumbnail => ({
                 id: item.guid || item.link || String(Math.random()),
                 title: articleTitle,
                 link: item.link || '#',
                 pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
                 source: feed.title || source,
-                snippet: processSnippet(rawSnippet),
+                snippet: snippetText,
                 thumbnail,
-                category: category,
+                category: finalCategory,
               }))
             );
           });
@@ -270,9 +281,9 @@ export async function GET(request: Request) {
       allItems = uniqueItems;
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
 
-      // Calculate true counts
       counts.all = allItems.length;
       counts.upsc = allItems.filter(i => i.category === 'upsc').length;
+      counts['current-affairs'] = allItems.filter(i => i.category === 'current-affairs').length;
       counts.economy = allItems.filter(i => i.category === 'economy').length;
       counts.science = allItems.filter(i => i.category === 'science').length;
       counts.world = allItems.filter(i => i.category === 'world').length;

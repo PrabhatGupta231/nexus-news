@@ -126,9 +126,16 @@ export default function NewsCard({
                format(new Date(article.pubDate), 'MMMM do, yyyy')
             )}
           </div>
-          <span className="bg-gray-100 text-gray-600 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm">
-            {article.category}
-          </span>
+          <div className="flex items-center gap-2">
+            {article.category === 'current-affairs' && (
+              <span className="bg-[#D32F2F] text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm shadow-sm">
+                EXAM DESK
+              </span>
+            )}
+            <span className="bg-gray-100 text-gray-600 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm">
+              {article.category === 'current-affairs' ? 'CURRENT AFFAIRS' : article.category}
+            </span>
+          </div>
         </div>
         
         <h4 className={`text-[var(--color-nexus-dark)] font-bold leading-snug mb-3 group-hover:text-[var(--color-nexus-red)] transition-colors font-serif ${fontSizeClass === 'text-sm' ? 'text-lg md:text-xl' : fontSizeClass === 'text-lg' ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl'}`}>

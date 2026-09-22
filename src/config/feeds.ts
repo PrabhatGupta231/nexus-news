@@ -1,8 +1,9 @@
-export type Category = 'all' | 'upsc' | 'economy' | 'science' | 'world';
+export type Category = 'all' | 'upsc' | 'current-affairs' | 'economy' | 'science' | 'world';
 
 export const NEWS_CATEGORIES = [
   { id: 'all', label: 'All Headlines' },
   { id: 'upsc', label: 'UPSC / Geopolitics' },
+  { id: 'current-affairs', label: 'CURRENT AFFAIRS' },
   { id: 'economy', label: 'Economy & Corporate' },
   { id: 'science', label: 'Science & Ecology' },
   { id: 'world', label: 'World Affairs' },
@@ -34,6 +35,7 @@ export function getHistoricalArchiveUrl(category: Category, dateStr: string): st
   let query = 'India';
   
   if (category === 'upsc') query = 'India National';
+  else if (category === 'current-affairs') query = 'India Current Affairs';
   else if (category === 'economy') query = 'India Economy';
   else if (category === 'science') query = 'India Science Environment';
   else if (category === 'world') query = 'World International Affairs';
