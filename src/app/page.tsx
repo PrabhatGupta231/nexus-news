@@ -11,13 +11,22 @@ import BreakingTicker from '@/components/BreakingTicker';
 
 type FontSize = 'text-sm' | 'text-base' | 'text-lg';
 
+interface CategoryCounts {
+  [key: string]: number | undefined;
+  all: number;
+  upsc: number;
+  economy: number;
+  science: number;
+  world?: number;
+}
+
 export default function Home() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [tabCounts, setTabCounts] = useState<{ [key in Category | 'all']?: number }>({ all: 0, upsc: 0, economy: 0, science: 0, world: 0 });
+  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, economy: 0, science: 0, world: 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
@@ -236,7 +245,7 @@ export default function Home() {
               >
                 {cat.label}
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${activeCategory === cat.id && !showBookmarks ? 'bg-[var(--color-nexus-red)]/10 text-[var(--color-nexus-red)]' : 'bg-gray-100 text-gray-400'}`}>
-                  {tabCounts[cat.id] || 0}
+                  {(tabCounts as Record<string, number>)[cat.id] || 0}
                 </span>
                 {activeCategory === cat.id && !showBookmarks && (
                   <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[var(--color-nexus-red)]"></div>
