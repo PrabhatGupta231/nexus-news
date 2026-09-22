@@ -18,8 +18,8 @@ export default function BreakingTicker({ articles }: BreakingTickerProps) {
       </div>
 
       {/* Marquee Container */}
-      <div className="flex-1 overflow-hidden group">
-        <div className="animate-marquee group-hover:[animation-play-state:paused] flex items-center gap-6 whitespace-nowrap pl-6">
+      <div className="flex-1 overflow-hidden group ml-4 pl-2 z-10">
+        <div className="animate-marquee group-hover:[animation-play-state:paused] flex items-center gap-6 whitespace-nowrap">
           {loopItems.map((article, idx) => (
             <div key={`${article.id}-${idx}`} className="flex items-center gap-6">
               <a 

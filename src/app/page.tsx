@@ -306,7 +306,7 @@ export default function Home() {
                 {/* Primary Lead Story (8 cols) */}
                 <div className="lg:col-span-8 group">
                   <div className="block">
-                    <div className="relative w-full pt-[56.25%] overflow-hidden bg-gray-100 mb-6">
+                    <div className="relative aspect-[16/9] w-full max-h-[380px] overflow-hidden bg-gray-100 mb-4 rounded-sm">
                       {leadArticle.thumbnail ? (
                         <Image
                           src={leadArticle.thumbnail}
@@ -355,12 +355,12 @@ export default function Home() {
                     </div>
                     
                     <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="block">
-                      <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#111111] mt-3 hover:text-[var(--color-nexus-red)] transition-colors">
+                      <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-tight mb-2 hover:text-[#D32F2F]">
                         {leadArticle.title}
                       </h2>
                     </a>
                     
-                    <p className="text-stone-600 text-sm line-clamp-3 my-2 font-sans">
+                    <p className="text-stone-600 text-sm leading-relaxed mb-4">
                       {leadArticle.snippet}
                     </p>
                     
