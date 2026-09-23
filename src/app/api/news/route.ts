@@ -39,6 +39,7 @@ export interface NewsItem {
   thumbnail: string | null;
   category: string;
   stateName?: string;
+  lang?: 'en' | 'hi';
 }
 
 function decodeHTMLEntities(text: string) {
@@ -238,6 +239,7 @@ export async function GET(request: Request) {
           snippet: processSnippet(rawSnippet),
           thumbnail: await extractImage(item, articleTitle, articleCat),
           category: articleCat,
+          lang: 'en'
         };
       });
       
@@ -276,7 +278,8 @@ export async function GET(request: Request) {
           snippet: snippetText,
           thumbnail: thumbnail || null,
           category: 'state-news',
-          stateName: locationParam.charAt(0).toUpperCase() + locationParam.slice(1)
+          stateName: locationParam.charAt(0).toUpperCase() + locationParam.slice(1),
+          lang: 'hi'
         }));
       });
       
@@ -290,25 +293,25 @@ export async function GET(request: Request) {
       const categoriesToFetch: (keyof typeof LIVE_FEED_URLS)[] = ['upsc', 'economy', 'science', 'world'];
       
       const fetchPromises: Promise<any>[] = categoriesToFetch.flatMap(cat => {
-        const urls = LIVE_FEED_URLS[cat];
-        return urls.map(url => 
-          fetchFeed(url).then(feed => ({ feed, source: new URL(url).hostname, category: cat }))
+        const feeds = LIVE_FEED_URLS[cat as keyof typeof LIVE_FEED_URLS] || [];
+        return feeds.map(feedObj => 
+          fetchFeed(feedObj.url).then(feed => ({ feed, source: new URL(feedObj.url).hostname, category: cat, lang: feedObj.lang }))
         );
       });
 
       if (categoryParam === 'state-news') {
         if (cityParam && CITY_FEEDS[cityParam.toLowerCase()]) {
            CITY_FEEDS[cityParam.toLowerCase()].forEach(sourceObj => fetchPromises.push(
-             fetchFeed(sourceObj.url).then(feed => ({ feed, source: sourceObj.name, category: 'state-news', stateName: 'Uttar Pradesh', isCityFeed: true }))
+             fetchFeed(sourceObj.url).then(feed => ({ feed, source: sourceObj.name, category: 'state-news', stateName: 'Uttar Pradesh', isCityFeed: true, lang: sourceObj.lang }))
            ));
         } else if (stateParam && STATE_FEEDS[stateParam]) {
-           STATE_FEEDS[stateParam].forEach(url => fetchPromises.push(
-             fetchFeed(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam }))
+           STATE_FEEDS[stateParam].forEach(feedObj => fetchPromises.push(
+             fetchFeed(feedObj.url).then(feed => ({ feed, source: new URL(feedObj.url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam, lang: feedObj.lang }))
            ));
         } else {
-           Object.entries(STATE_FEEDS).forEach(([st, urls]) => {
-             urls.forEach(url => fetchPromises.push(
-               fetchFeed(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[st] || st }))
+           Object.entries(STATE_FEEDS).forEach(([st, feeds]) => {
+             feeds.forEach(feedObj => fetchPromises.push(
+               fetchFeed(feedObj.url).then(feed => ({ feed, source: new URL(feedObj.url).hostname, category: 'state-news', stateName: STATE_NAMES[st] || st, lang: feedObj.lang }))
              ));
            });
         }
@@ -319,7 +322,7 @@ export async function GET(request: Request) {
 
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
-          const { feed, source, category, stateName, isCityFeed } = result.value;
+          const { feed, source, category, stateName, isCityFeed, lang } = result.value;
           
           feed.items.forEach((item: any) => {
             const rawSnippet = item.description || item.contentSnippet || item['content:encoded'] || '';
@@ -339,7 +342,8 @@ export async function GET(request: Request) {
                 snippet: snippetText,
                 thumbnail,
                 category: finalCategory,
-                stateName
+                stateName,
+                lang
               }))
             );
           });
@@ -378,8 +382,8 @@ export async function GET(request: Request) {
            
            if (allItems.length < 5) {
              try {
-                const fallbackPromises = PIB_HINDI_FALLBACK.map(url => 
-                   fetchFeed(url).then(feed => ({ feed, source: 'PIB Regional' }))
+                const fallbackPromises = PIB_HINDI_FALLBACK.map(feedObj => 
+                   fetchFeed(feedObj.url).then(feed => ({ feed, source: 'PIB Regional', lang: feedObj.lang }))
                 );
                 const fallbackResults = await Promise.allSettled(fallbackPromises);
                 const fallbackParsePromises: Promise<NewsItem>[] = [];
@@ -400,7 +404,8 @@ export async function GET(request: Request) {
                             snippet: snippetText,
                             thumbnail,
                             category: 'state-news',
-                            stateName: STATE_NAMES[stateParam] || stateParam
+                            stateName: STATE_NAMES[stateParam] || stateParam,
+                            lang: (res.value as any).lang || 'hi'
                           }))
                         );
                      });

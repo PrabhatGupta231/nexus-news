@@ -11,30 +11,30 @@ export const NEWS_CATEGORIES = [
 
 export const LIVE_FEED_URLS = {
   upsc: [
-    'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1',
-    'https://www.thehindu.com/news/national/feeder/default.rss',
-    'https://indianexpress.com/section/explained/feed/'
+    { url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1', lang: 'en' },
+    { url: 'https://www.thehindu.com/news/national/feeder/default.rss', lang: 'en' },
+    { url: 'https://indianexpress.com/section/explained/feed/', lang: 'en' }
   ],
   economy: [
-    'https://www.thehindubusinessline.com/economy/feeder/default.rss',
-    'https://www.livemint.com/rss/economy',
-    'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en'
+    { url: 'https://www.thehindubusinessline.com/economy/feeder/default.rss', lang: 'en' },
+    { url: 'https://www.livemint.com/rss/economy', lang: 'en' },
+    { url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en', lang: 'en' }
   ],
   science: [
-    'https://www.thehindu.com/sci-tech/science/feeder/default.rss',
-    'https://www.downtoearth.org.in/rss'
+    { url: 'https://www.thehindu.com/sci-tech/science/feeder/default.rss', lang: 'en' },
+    { url: 'https://www.downtoearth.org.in/rss', lang: 'en' }
   ],
   world: [
-    'https://feeds.bbci.co.uk/news/world/rss.xml',
-    'https://www.thehindu.com/news/international/feeder/default.rss'
+    { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', lang: 'en' },
+    { url: 'https://www.thehindu.com/news/international/feeder/default.rss', lang: 'en' }
   ]
 };
 
-export const STATE_FEEDS: Record<string, string[]> = {
-  'uttar-pradesh': ['https://news.google.com/rss/search?q=location:uttar+pradesh+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
-  'bihar': ['https://news.google.com/rss/search?q=location:bihar+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
-  'madhya-pradesh': ['https://news.google.com/rss/search?q=location:madhya+pradesh+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
-  'delhi-ncr': ['https://news.google.com/rss/search?q=location:delhi+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
+export const STATE_FEEDS: Record<string, { url: string; lang: 'en' | 'hi' }[]> = {
+  'uttar-pradesh': [{ url: 'https://news.google.com/rss/search?q=location:uttar+pradesh+when:2d&hl=hi&gl=IN&ceid=IN:hi', lang: 'hi' }],
+  'bihar': [{ url: 'https://news.google.com/rss/search?q=location:bihar+when:2d&hl=hi&gl=IN&ceid=IN:hi', lang: 'hi' }],
+  'madhya-pradesh': [{ url: 'https://news.google.com/rss/search?q=location:madhya+pradesh+when:2d&hl=hi&gl=IN&ceid=IN:hi', lang: 'hi' }],
+  'delhi-ncr': [{ url: 'https://news.google.com/rss/search?q=location:delhi+when:2d&hl=hi&gl=IN&ceid=IN:hi', lang: 'hi' }],
 };
 
 export const STATE_NAMES: Record<string, string> = {
@@ -44,26 +44,26 @@ export const STATE_NAMES: Record<string, string> = {
   'delhi-ncr': 'Delhi NCR',
 };
 
-export const CITY_FEEDS: Record<string, { name: string; url: string; hindiName: string }[]> = {
+export const CITY_FEEDS: Record<string, { name: string; url: string; hindiName: string; lang: 'en' | 'hi' }[]> = {
   "lucknow": [
-    { name: "Amar Ujala Lucknow", url: "https://www.amarujala.com/rss/lucknow.xml", hindiName: "लखनऊ" },
-    { name: "Jagran Lucknow", url: "https://rss.jagran.com/rss/uttar-pradesh/lucknow.xml", hindiName: "लखनऊ" }
+    { name: "Amar Ujala Lucknow", url: "https://www.amarujala.com/rss/lucknow.xml", hindiName: "लखनऊ", lang: 'hi' },
+    { name: "Jagran Lucknow", url: "https://rss.jagran.com/rss/uttar-pradesh/lucknow.xml", hindiName: "लखनऊ", lang: 'hi' }
   ],
   "varanasi": [
-    { name: "Amar Ujala Varanasi", url: "https://www.amarujala.com/rss/varanasi.xml", hindiName: "वाराणसी" },
-    { name: "Jagran Varanasi", url: "https://rss.jagran.com/rss/uttar-pradesh/varanasi.xml", hindiName: "वाराणसी" }
+    { name: "Amar Ujala Varanasi", url: "https://www.amarujala.com/rss/varanasi.xml", hindiName: "वाराणसी", lang: 'hi' },
+    { name: "Jagran Varanasi", url: "https://rss.jagran.com/rss/uttar-pradesh/varanasi.xml", hindiName: "वाराणसी", lang: 'hi' }
   ],
   "prayagraj": [
-    { name: "Amar Ujala Prayagraj", url: "https://www.amarujala.com/rss/allahabad.xml", hindiName: "प्रयागराज" },
-    { name: "Jagran Prayagraj", url: "https://rss.jagran.com/rss/uttar-pradesh/allahabad.xml", hindiName: "प्रयागराज" }
+    { name: "Amar Ujala Prayagraj", url: "https://www.amarujala.com/rss/allahabad.xml", hindiName: "प्रयागराज", lang: 'hi' },
+    { name: "Jagran Prayagraj", url: "https://rss.jagran.com/rss/uttar-pradesh/allahabad.xml", hindiName: "प्रयागराज", lang: 'hi' }
   ],
   "kanpur": [
-    { name: "Amar Ujala Kanpur", url: "https://www.amarujala.com/rss/kanpur.xml", hindiName: "कानपुर" },
-    { name: "Jagran Kanpur", url: "https://rss.jagran.com/rss/uttar-pradesh/kanpur.xml", hindiName: "कानपुर" }
+    { name: "Amar Ujala Kanpur", url: "https://www.amarujala.com/rss/kanpur.xml", hindiName: "कानपुर", lang: 'hi' },
+    { name: "Jagran Kanpur", url: "https://rss.jagran.com/rss/uttar-pradesh/kanpur.xml", hindiName: "कानपुर", lang: 'hi' }
   ]
 };
 
-export const PIB_HINDI_FALLBACK = ['https://pib.gov.in/RssMain.aspx?ModId=6&Lang=2'];
+export const PIB_HINDI_FALLBACK = [{ url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=2', lang: 'hi' }];
 
 export function getHistoricalArchiveUrl(category: Category, dateStr: string): string {
   // Google News search bounded by dates

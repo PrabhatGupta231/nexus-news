@@ -35,12 +35,14 @@ function HomeContent() {
   const initialTab = (searchParams.get('tab') as Category | 'state-news') || 'all';
   const initialState = searchParams.get('state') || '';
   const initialCity = searchParams.get('city') || '';
+  const initialLang = searchParams.get('lang') || 'all';
   const articleId = searchParams.get('article') || null;
 
   const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>(initialTab);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedState, setSelectedState] = useState<string>(initialState);
   const [selectedCity, setSelectedCity] = useState<string>(initialCity);
+  const [selectedLang, setSelectedLang] = useState<string>(initialLang);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -206,10 +208,11 @@ function HomeContent() {
 
   if (!isClient) return null; // Prevent hydration mismatch
 
-  // Filter news by search query
+  // Filter news by search query and language
   const displayedNews = showBookmarks 
     ? bookmarks 
     : news.filter(article => {
+        if (selectedLang !== 'all' && article.lang && article.lang !== selectedLang) return false;
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return article.title.toLowerCase().includes(q) || article.snippet.toLowerCase().includes(q) || article.category.toLowerCase().includes(q);
@@ -283,6 +286,19 @@ function HomeContent() {
               <button onClick={() => setFontSize('text-sm')} className={`px-2 py-1 font-serif transition-colors ${fontSize === 'text-sm' ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}>A-</button>
               <button onClick={() => setFontSize('text-base')} className={`px-2 py-1 font-serif transition-colors ${fontSize === 'text-base' ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}>A</button>
               <button onClick={() => setFontSize('text-lg')} className={`px-2 py-1 font-serif transition-colors ${fontSize === 'text-lg' ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}>A+</button>
+            </div>
+            
+            {/* Language Toggle */}
+            <div className="hidden md:flex items-center gap-1 bg-black/50 rounded-sm p-0.5 border border-gray-700">
+              {['all', 'en', 'hi'].map(l => (
+                <button
+                  key={l}
+                  onClick={() => { setSelectedLang(l); updateUrl({ lang: l === 'all' ? null : l, article: null }); }}
+                  className={`px-3 py-1 font-sans text-[10px] font-black uppercase tracking-widest transition-colors rounded-sm ${selectedLang === l ? 'bg-[var(--color-nexus-red)] text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {l === 'en' ? 'EN' : l === 'hi' ? 'HI' : 'ALL'}
+                </button>
+              ))}
             </div>
             
             {/* Saved Dispatches */}
