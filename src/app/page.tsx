@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { NEWS_CATEGORIES, Category } from '@/config/feeds';
 import { NewsItem } from '@/app/api/news/route';
 import { Search, Loader2, Mail, ExternalLink, Calendar, RefreshCw, Clock, Bookmark, X, Volume2, Share2 } from 'lucide-react';
@@ -23,13 +23,24 @@ interface CategoryCounts {
   'state-news'?: number;
 }
 
-export default function Home() {
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>('all');
+  const initialTab = (searchParams.get('tab') as Category | 'state-news') || 'all';
+  const initialState = searchParams.get('state') || '';
+  const initialCity = searchParams.get('city') || '';
+  const articleId = searchParams.get('article') || null;
+
+  const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>(initialTab);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [selectedState, setSelectedState] = useState<string>('');
-  const [selectedCity, setSelectedCity] = useState<string>('');
+  const [selectedState, setSelectedState] = useState<string>(initialState);
+  const [selectedCity, setSelectedCity] = useState<string>(initialCity);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -48,6 +59,51 @@ export default function Home() {
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  const updateUrl = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === '') params.delete(key);
+      else params.set(key, value);
+    });
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleCategoryChange = (cat: Category | 'state-news') => {
+    setActiveCategory(cat);
+    setSelectedCity('');
+    setShowBookmarks(false);
+    updateUrl({ tab: cat, city: null, state: cat === 'state-news' ? selectedState : null, article: null });
+  };
+
+  const handleStateChange = (state: string) => {
+    setActiveCategory('state-news');
+    setSelectedState(state);
+    setSelectedCity('');
+    setShowBookmarks(false);
+    updateUrl({ tab: 'state-news', state: state || null, city: null, article: null });
+  };
+
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+    setSearchQuery('');
+    updateUrl({ city: city || null, article: null });
+  };
+
+  const handleSelectArticle = (article: NewsItem | null) => {
+    setSelectedArticle(article);
+    updateUrl({ article: article ? article.id : null });
+  };
+
+  useEffect(() => {
+    if (articleId && !selectedArticle) {
+      const found = news.find(a => a.id === articleId) || bookmarks.find(a => a.id === articleId);
+      if (found) setSelectedArticle(found);
+    } else if (!articleId && selectedArticle) {
+      setSelectedArticle(null);
+    }
+  }, [articleId, news, bookmarks, selectedArticle]);
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -282,7 +338,7 @@ export default function Home() {
                 {NEWS_CATEGORIES.map(cat => (
                   <button
                     key={cat.id}
-                    onClick={() => { setActiveCategory(cat.id as Category); setSelectedCity(''); setMobileDropdownOpen(false); setShowBookmarks(false); }}
+                    onClick={() => { handleCategoryChange(cat.id as Category); setMobileDropdownOpen(false); }}
                     className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${activeCategory === cat.id ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
                     {cat.label}
@@ -298,7 +354,7 @@ export default function Home() {
                      return (
                        <button
                          key={st}
-                         onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setSelectedCity(''); setMobileDropdownOpen(false); setShowBookmarks(false); }}
+                         onClick={() => { handleStateChange(st === 'All States' ? '' : st); setMobileDropdownOpen(false); }}
                          className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
                        >
                          {stLabel}
@@ -316,7 +372,7 @@ export default function Home() {
             {NEWS_CATEGORIES.filter(cat => ['all', 'current-affairs', 'upsc'].includes(cat.id)).map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => { setActiveCategory(cat.id as Category); setSelectedCity(''); setShowBookmarks(false); }}
+                onClick={() => handleCategoryChange(cat.id as Category)}
                 className={`whitespace-nowrap px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative flex items-center gap-2 ${
                   activeCategory === cat.id && !showBookmarks
                     ? 'text-[var(--color-nexus-red)]'
@@ -354,7 +410,7 @@ export default function Home() {
                   {NEWS_CATEGORIES.filter(cat => !['all', 'current-affairs', 'upsc'].includes(cat.id)).map(cat => (
                     <button
                       key={cat.id}
-                      onClick={() => { setActiveCategory(cat.id as Category); setSelectedCity(''); setMoreDropdownOpen(false); setShowBookmarks(false); }}
+                      onClick={() => { handleCategoryChange(cat.id as Category); setMoreDropdownOpen(false); }}
                       className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 flex items-center justify-between ${activeCategory === cat.id && !showBookmarks ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50 hover:text-[var(--color-nexus-red)]'}`}
                     >
                       {cat.label}
@@ -378,7 +434,7 @@ export default function Home() {
                        return (
                          <button
                            key={st}
-                           onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setSelectedCity(''); setMoreDropdownOpen(false); setShowBookmarks(false); }}
+                           onClick={() => { handleStateChange(st === 'All States' ? '' : st); setMoreDropdownOpen(false); }}
                            className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-white hover:text-[var(--color-nexus-red)]'}`}
                          >
                            {stLabel}
@@ -413,7 +469,7 @@ export default function Home() {
         <div className="bg-gray-50 border-b border-[var(--color-nexus-border)] py-2 px-4 flex items-center justify-center gap-4 text-xs font-bold z-30 relative flex-wrap">
           <span className="text-gray-400 uppercase tracking-widest">Cities:</span>
           <button 
-            onClick={() => { setSelectedCity(''); setSearchQuery(''); }} 
+            onClick={() => handleCityChange('')} 
             className={`transition-colors uppercase tracking-widest px-3 py-1 rounded-sm ${selectedCity === '' ? 'bg-[var(--color-nexus-red)] text-white' : 'text-gray-600 hover:text-[var(--color-nexus-red)] hover:bg-gray-200'}`}
           >
             All UP
@@ -421,7 +477,7 @@ export default function Home() {
           {['Lucknow', 'Varanasi', 'Prayagraj', 'Kanpur'].map(city => (
             <button 
               key={city} 
-              onClick={() => { setSelectedCity(city.toLowerCase()); setSearchQuery(''); }} 
+              onClick={() => handleCityChange(city.toLowerCase())} 
               className={`transition-colors uppercase tracking-widest px-3 py-1 rounded-sm ${selectedCity === city.toLowerCase() ? 'bg-stone-900 text-[var(--color-nexus-red)]' : 'text-gray-600 hover:text-[var(--color-nexus-red)] hover:bg-gray-200'}`}
             >
               {city}
@@ -520,7 +576,7 @@ export default function Home() {
                           </button>
                         </div>
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-nexus-red)] mb-4 inline-block">NEXUS EDITORIAL</h3>
-                        <button onClick={() => setSelectedArticle(leadArticle)} className="block text-left">
+                        <button onClick={() => handleSelectArticle(leadArticle)} className="block text-left">
                            <h2 className="font-serif text-3xl md:text-5xl font-black leading-tight hover:text-[var(--color-nexus-red)] transition-colors">
                              {leadArticle.title}
                            </h2>
@@ -541,7 +597,7 @@ export default function Home() {
                     </div>
                     
                     {leadArticle.thumbnail && (
-                      <button onClick={() => setSelectedArticle(leadArticle)} className="block text-left">
+                      <button onClick={() => handleSelectArticle(leadArticle)} className="block text-left">
                         <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-tight mb-2 hover:text-[#D32F2F]">
                           {leadArticle.title}
                         </h2>
@@ -553,7 +609,7 @@ export default function Home() {
                     </p>
                     
                     <div className="flex items-center justify-between">
-                      <button onClick={() => setSelectedArticle(leadArticle)} className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-red)] uppercase tracking-widest hover:border-b-2 hover:border-[var(--color-nexus-red)] pb-1">
+                      <button onClick={() => handleSelectArticle(leadArticle)} className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-red)] uppercase tracking-widest hover:border-b-2 hover:border-[var(--color-nexus-red)] pb-1">
                         Read Full Story <ExternalLink className="w-3.5 h-3.5" />
                       </button>
                       <button 
@@ -581,7 +637,7 @@ export default function Home() {
                   
                   {heroSidebarArticles.map((article) => (
                     <article key={article.id} className="group border-b border-[var(--color-nexus-border)] pb-6 last:border-0 last:pb-0 relative">
-                      <button onClick={() => setSelectedArticle(article)} className="flex items-start gap-4 text-left w-full">
+                      <button onClick={() => handleSelectArticle(article)} className="flex items-start gap-4 text-left w-full">
                         <div className="flex-grow">
                           <span className="text-[var(--color-nexus-red)] text-[10px] font-black uppercase tracking-widest mb-1 block">
                             {article.source}
@@ -635,7 +691,7 @@ export default function Home() {
                       fontSizeClass={fontSize}
                       isBookmarked={bookmarks.some(b => b.id === article.id)}
                       onBookmarkToggle={handleBookmarkToggle}
-                      onClick={() => setSelectedArticle(article)}
+                      onClick={() => handleSelectArticle(article)}
                     />
                   ))}
                  </div>
@@ -758,11 +814,24 @@ export default function Home() {
 
       <ArticleModal 
         article={selectedArticle}
-        onClose={() => setSelectedArticle(null)}
+        onClose={() => handleSelectArticle(null)}
         isPastDate={isPastDate}
         isBookmarked={selectedArticle ? bookmarks.some(b => b.id === selectedArticle.id) : false}
         onBookmarkToggle={handleBookmarkToggle}
       />
     </div>
+  );
+}
+
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex justify-center items-center bg-[var(--color-nexus-bg)]">
+        <Loader2 className="w-10 h-10 animate-spin text-[var(--color-nexus-red)]" />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
