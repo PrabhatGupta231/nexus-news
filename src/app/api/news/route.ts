@@ -5,11 +5,29 @@ import { LIVE_FEED_URLS, Category, getHistoricalArchiveUrl, STATE_FEEDS, STATE_N
 
 export const revalidate = 600;
 
+
 const parser = new Parser({
   customFields: {
     item: ['media:content', 'media:thumbnail', 'enclosure', 'content:encoded', 'description', 'source'],
   },
 });
+
+const globalCache: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function fetchFeed(url: string, timeoutMs: number = 2500) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    return await parser.parseString(text);
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 
 export interface NewsItem {
   id: string;
@@ -176,6 +194,15 @@ function slugify(text: string) {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const cacheKey = searchParams.toString();
+  const now = Date.now();
+
+  if (globalCache[cacheKey] && now - globalCache[cacheKey].timestamp < CACHE_TTL) {
+    return NextResponse.json(globalCache[cacheKey].data, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+    });
+  }
+
   const categoryParam = (searchParams.get('category') as Category | 'state-news') || 'all';
   const stateParam = searchParams.get('state');
   const cityParam = searchParams.get('city');
@@ -194,7 +221,7 @@ export async function GET(request: Request) {
     if (isPastDate) {
       // Historical Archive Mode
       const url = getHistoricalArchiveUrl(categoryParam, dateStr!);
-      const feed = await parser.parseURL(url);
+      const feed = await fetchFeed(url);
       const source = new URL(url).hostname;
       
       const itemPromises = feed.items.map(async (item) => {
@@ -225,7 +252,7 @@ export async function GET(request: Request) {
       const query = encodeURIComponent(`${locationParam} uttar pradesh when:3d`);
       const feedUrl = `https://news.google.com/rss/search?q=${query}&hl=hi&gl=IN&ceid=IN:hi`;
       
-      const feed = await parser.parseURL(feedUrl);
+      const feed = await fetchFeed(feedUrl);
       
       const itemPromises = feed.items.map(async (item) => {
         let articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
@@ -265,23 +292,23 @@ export async function GET(request: Request) {
       const fetchPromises: Promise<any>[] = categoriesToFetch.flatMap(cat => {
         const urls = LIVE_FEED_URLS[cat];
         return urls.map(url => 
-          parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: cat }))
+          fetchFeed(url).then(feed => ({ feed, source: new URL(url).hostname, category: cat }))
         );
       });
 
       if (categoryParam === 'state-news') {
         if (cityParam && CITY_FEEDS[cityParam.toLowerCase()]) {
            CITY_FEEDS[cityParam.toLowerCase()].forEach(sourceObj => fetchPromises.push(
-             parser.parseURL(sourceObj.url).then(feed => ({ feed, source: sourceObj.name, category: 'state-news', stateName: 'Uttar Pradesh', isCityFeed: true }))
+             fetchFeed(sourceObj.url).then(feed => ({ feed, source: sourceObj.name, category: 'state-news', stateName: 'Uttar Pradesh', isCityFeed: true }))
            ));
         } else if (stateParam && STATE_FEEDS[stateParam]) {
            STATE_FEEDS[stateParam].forEach(url => fetchPromises.push(
-             parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam }))
+             fetchFeed(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam }))
            ));
         } else {
            Object.entries(STATE_FEEDS).forEach(([st, urls]) => {
              urls.forEach(url => fetchPromises.push(
-               parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[st] || st }))
+               fetchFeed(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[st] || st }))
              ));
            });
         }
@@ -352,7 +379,7 @@ export async function GET(request: Request) {
            if (allItems.length < 5) {
              try {
                 const fallbackPromises = PIB_HINDI_FALLBACK.map(url => 
-                   parser.parseURL(url).then(feed => ({ feed, source: 'PIB Regional' }))
+                   fetchFeed(url).then(feed => ({ feed, source: 'PIB Regional' }))
                 );
                 const fallbackResults = await Promise.allSettled(fallbackPromises);
                 const fallbackParsePromises: Promise<NewsItem>[] = [];
@@ -401,10 +428,11 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({
-      counts,
-      lastUpdated,
-      articles: allItems
+  const responseData = { counts, lastUpdated, articles: allItems };
+    globalCache[cacheKey] = { data: responseData, timestamp: Date.now() };
+
+    return NextResponse.json(responseData, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });
   } catch (error) {
     console.error('API Error:', error);

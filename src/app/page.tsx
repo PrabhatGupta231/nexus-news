@@ -159,6 +159,10 @@ function HomeContent() {
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
       setNews(data.articles || []);
+      // Cache the latest news for instant load
+      if (!isBackgroundSync && data.articles && data.articles.length > 0) {
+        sessionStorage.setItem(`nexus_news_cache_${category}_${state}_${city}`, JSON.stringify(data.articles));
+      }
       if (data.counts) {
         setTabCounts(prev => ({ ...prev, ...data.counts }));
       }
@@ -176,7 +180,19 @@ function HomeContent() {
 
   useEffect(() => {
     if (isClient) {
-      fetchNews(activeCategory, selectedDate, selectedState, selectedCity);
+      // Try loading from session cache instantly
+      const cached = sessionStorage.getItem(`nexus_news_cache_${activeCategory}_${selectedState}_${selectedCity}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.length > 0) {
+            setNews(parsed);
+            setLoading(false); // We have content, no need to show skeleton
+          }
+        } catch (e) {}
+      }
+
+      fetchNews(activeCategory, selectedDate, selectedState, selectedCity, !!cached);
       
       // Background polling every 10 minutes (600,000ms) ONLY if it's today's live feed
       if (!isPastDate) {
@@ -488,9 +504,27 @@ function HomeContent() {
 
       <main className="flex-grow max-w-[1400px] mx-auto px-4 py-12 w-full">
         {loading ? (
-          <div className="flex justify-center items-center py-32 flex-col gap-6">
-            <Loader2 className="w-10 h-10 animate-spin text-[var(--color-nexus-red)]" />
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Curating the Edition...</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 pb-16">
+            <div className="lg:col-span-8 group animate-pulse">
+               <div className="w-full h-[380px] bg-gray-200 mb-4 rounded-sm"></div>
+               <div className="h-4 bg-gray-200 w-1/4 mb-4"></div>
+               <div className="h-10 bg-gray-200 w-full mb-4"></div>
+               <div className="h-4 bg-gray-200 w-full mb-2"></div>
+               <div className="h-4 bg-gray-200 w-5/6"></div>
+            </div>
+            <div className="lg:col-span-4 flex flex-col gap-6 animate-pulse">
+               <div className="h-6 bg-gray-200 w-1/3 mb-2"></div>
+               {[1,2,3].map(i => (
+                 <div key={i} className="flex gap-4 mb-4 border-b border-gray-100 pb-4">
+                   <div className="flex-grow">
+                     <div className="h-3 bg-gray-200 w-1/4 mb-2"></div>
+                     <div className="h-4 bg-gray-200 w-full mb-2"></div>
+                     <div className="h-4 bg-gray-200 w-2/3"></div>
+                   </div>
+                   <div className="w-24 h-24 bg-gray-200 flex-shrink-0 ml-4 rounded-sm"></div>
+                 </div>
+               ))}
+            </div>
           </div>
         ) : error ? (
           <div className="text-center py-20 bg-white border border-[var(--color-nexus-border)] p-12 max-w-2xl mx-auto">
