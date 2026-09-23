@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Parser from 'rss-parser';
 import * as cheerio from 'cheerio';
-import { LIVE_FEED_URLS, Category, getHistoricalArchiveUrl, STATE_FEEDS, STATE_NAMES, PIB_HINDI_FALLBACK, CITY_FEEDS } from '@/config/feeds';
+import { FEEDS, Category, getHistoricalArchiveUrl, STATE_NAMES } from '@/config/feeds';
 
 export const revalidate = 600;
 
@@ -209,6 +209,7 @@ export async function GET(request: Request) {
   const cityParam = searchParams.get('city');
   const dateStr = searchParams.get('date');
   const locationParam = searchParams.get('location');
+  const langParam = (searchParams.get('lang') as 'en' | 'hi') || 'en';
   
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -221,7 +222,7 @@ export async function GET(request: Request) {
   try {
     if (isPastDate) {
       // Historical Archive Mode
-      const url = getHistoricalArchiveUrl(categoryParam, dateStr!);
+      const url = getHistoricalArchiveUrl(categoryParam, dateStr!, langParam);
       const feed = await fetchFeed(url);
       const source = new URL(url).hostname;
       
@@ -289,33 +290,32 @@ export async function GET(request: Request) {
       counts.all = allItems.length;
       counts['state-news'] = allItems.length;
     } else {
-      // Live Mode: Fetch ALL feeds for the 4 core categories
-      const categoriesToFetch: (keyof typeof LIVE_FEED_URLS)[] = ['upsc', 'economy', 'science', 'world'];
-      
-      const fetchPromises: Promise<any>[] = categoriesToFetch.flatMap(cat => {
-        const feeds = LIVE_FEED_URLS[cat as keyof typeof LIVE_FEED_URLS] || [];
-        return feeds.map(feedObj => 
-          fetchFeed(feedObj.url).then(feed => ({ feed, source: new URL(feedObj.url).hostname, category: cat, lang: feedObj.lang }))
-        );
+      // Live Mode: Filter unified FEEDS array
+      const targetFeeds = FEEDS.filter(f => {
+        if (f.lang !== langParam) return false;
+        
+        if (categoryParam !== 'all') {
+          if (categoryParam === 'state-news') {
+             if (f.category !== 'state-news') return false;
+             if (cityParam && f.city !== cityParam.toLowerCase()) return false;
+             if (stateParam && !cityParam && f.state !== stateParam) return false;
+          } else {
+             if (f.category !== categoryParam) return false;
+          }
+        }
+        return true;
       });
 
-      if (categoryParam === 'state-news') {
-        if (cityParam && CITY_FEEDS[cityParam.toLowerCase()]) {
-           CITY_FEEDS[cityParam.toLowerCase()].forEach(sourceObj => fetchPromises.push(
-             fetchFeed(sourceObj.url).then(feed => ({ feed, source: sourceObj.name, category: 'state-news', stateName: 'Uttar Pradesh', isCityFeed: true, lang: sourceObj.lang }))
-           ));
-        } else if (stateParam && STATE_FEEDS[stateParam]) {
-           STATE_FEEDS[stateParam].forEach(feedObj => fetchPromises.push(
-             fetchFeed(feedObj.url).then(feed => ({ feed, source: new URL(feedObj.url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam, lang: feedObj.lang }))
-           ));
-        } else {
-           Object.entries(STATE_FEEDS).forEach(([st, feeds]) => {
-             feeds.forEach(feedObj => fetchPromises.push(
-               fetchFeed(feedObj.url).then(feed => ({ feed, source: new URL(feedObj.url).hostname, category: 'state-news', stateName: STATE_NAMES[st] || st, lang: feedObj.lang }))
-             ));
-           });
-        }
-      }
+      const fetchPromises = targetFeeds.map(f => 
+        fetchFeed(f.url).then(feed => ({ 
+          feed, 
+          source: f.name || new URL(f.url).hostname, 
+          category: f.category, 
+          lang: f.lang,
+          stateName: f.state ? (STATE_NAMES[f.state] || f.state) : undefined,
+          isCityFeed: !!f.city
+        }))
+      );
 
       const results = await Promise.allSettled(fetchPromises);
       let parsePromises: Promise<NewsItem>[] = [];
@@ -373,64 +373,7 @@ export async function GET(request: Request) {
       counts.world = allItems.filter(i => i.category === 'world').length;
       counts['state-news'] = allItems.filter(i => i.category === 'state-news').length;
 
-      // Filter if a specific category was requested
-      if (categoryParam !== 'all') {
-        allItems = allItems.filter(i => i.category === categoryParam);
-        
-        if (categoryParam === 'state-news' && stateParam) {
-           allItems = allItems.filter(i => i.stateName === (STATE_NAMES[stateParam] || stateParam));
-           
-           if (allItems.length < 5) {
-             try {
-                const fallbackPromises = PIB_HINDI_FALLBACK.map(feedObj => 
-                   fetchFeed(feedObj.url).then(feed => ({ feed, source: 'PIB Regional', lang: feedObj.lang }))
-                );
-                const fallbackResults = await Promise.allSettled(fallbackPromises);
-                const fallbackParsePromises: Promise<NewsItem>[] = [];
-                
-                fallbackResults.forEach(res => {
-                  if (res.status === 'fulfilled') {
-                     const { feed, source } = res.value;
-                     feed.items.slice(0, 10).forEach((item: any) => {
-                        const articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
-                        const snippetText = processSnippet(item.description || item.contentSnippet || '');
-                        fallbackParsePromises.push(
-                          extractImage(item, articleTitle, 'state-news').then(thumbnail => ({
-                            id: item.guid || item.link || String(Math.random()),
-                            title: articleTitle,
-                            link: item.link || '#',
-                            pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-                            source: extractSourceName(item, feed.title || '', source, STATE_NAMES[stateParam] || stateParam),
-                            snippet: snippetText,
-                            thumbnail,
-                            category: 'state-news',
-                            stateName: STATE_NAMES[stateParam] || stateParam,
-                            lang: (res.value as any).lang || 'hi'
-                          }))
-                        );
-                     });
-                  }
-                });
-                
-                const fallbackItemsSettled = await Promise.allSettled(fallbackParsePromises);
-                const fallbackItems = fallbackItemsSettled.filter(p => p.status === 'fulfilled').map(p => (p as PromiseFulfilledResult<NewsItem>).value);
-                
-                allItems = [...allItems, ...fallbackItems];
-                
-                const seenSlugsFallback = new Set<string>();
-                allItems = allItems.filter((item) => {
-                  const slug = slugify(item.title);
-                  if (seenSlugsFallback.has(slug)) return false;
-                  seenSlugsFallback.add(slug);
-                  return true;
-                });
-                allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
-             } catch (e) {
-                console.error("Fallback error", e);
-             }
-           }
-        }
-      }
+
     }
 
   const responseData = { counts, lastUpdated, articles: allItems };

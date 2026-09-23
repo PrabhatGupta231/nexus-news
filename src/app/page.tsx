@@ -35,7 +35,7 @@ function HomeContent() {
   const initialTab = (searchParams.get('tab') as Category | 'state-news') || 'all';
   const initialState = searchParams.get('state') || '';
   const initialCity = searchParams.get('city') || '';
-  const initialLang = searchParams.get('lang') || 'all';
+  const initialLang = searchParams.get('lang') || 'en';
   const articleId = searchParams.get('article') || null;
 
   const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>(initialTab);
@@ -97,6 +97,11 @@ function HomeContent() {
     updateUrl({ article: article ? article.id : null });
   };
 
+  const handleLanguageChange = (lang: string) => {
+    setSelectedLang(lang);
+    updateUrl({ lang, article: null });
+  };
+
   useEffect(() => {
     if (articleId && !selectedArticle) {
       const found = news.find(a => a.id === articleId) || bookmarks.find(a => a.id === articleId);
@@ -150,11 +155,11 @@ function HomeContent() {
     });
   };
 
-  const fetchNews = async (category: Category | 'state-news', dateStr: string, state: string = '', city: string = '', isBackgroundSync = false) => {
+  const fetchNews = async (category: Category | 'state-news', dateStr: string, state: string = '', city: string = '', lang: string = 'en', isBackgroundSync = false) => {
     if (!isBackgroundSync) setLoading(true);
     setError(null);
     try {
-      let url = `/api/news?category=${category}&date=${dateStr}`;
+      let url = `/api/news?category=${category}&date=${dateStr}&lang=${lang}`;
       if (state) url += `&state=${state}`;
       if (city) url += `&location=${city}`;
       const res = await fetch(url);
@@ -194,17 +199,17 @@ function HomeContent() {
         } catch (e) {}
       }
 
-      fetchNews(activeCategory, selectedDate, selectedState, selectedCity, !!cached);
+      fetchNews(activeCategory, selectedDate, selectedState, selectedCity, selectedLang, !!cached);
       
       // Background polling every 10 minutes (600,000ms) ONLY if it's today's live feed
       if (!isPastDate) {
         const intervalId = setInterval(() => {
-          fetchNews(activeCategory, selectedDate, selectedState, selectedCity, true);
+          fetchNews(activeCategory, selectedDate, selectedState, selectedCity, selectedLang, true);
         }, 600000);
         return () => clearInterval(intervalId);
       }
     }
-  }, [activeCategory, selectedDate, selectedState, selectedCity, isPastDate, isClient]);
+  }, [activeCategory, selectedDate, selectedState, selectedCity, selectedLang, isPastDate, isClient]);
 
   if (!isClient) return null; // Prevent hydration mismatch
 
@@ -212,7 +217,7 @@ function HomeContent() {
   const displayedNews = showBookmarks 
     ? bookmarks 
     : news.filter(article => {
-        if (selectedLang !== 'all' && article.lang && article.lang !== selectedLang) return false;
+        
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return article.title.toLowerCase().includes(q) || article.snippet.toLowerCase().includes(q) || article.category.toLowerCase().includes(q);
@@ -289,16 +294,27 @@ function HomeContent() {
             </div>
             
             {/* Language Toggle */}
-            <div className="hidden md:flex items-center gap-1 bg-black/50 rounded-sm p-0.5 border border-gray-700">
-              {['all', 'en', 'hi'].map(l => (
-                <button
-                  key={l}
-                  onClick={() => { setSelectedLang(l); updateUrl({ lang: l === 'all' ? null : l, article: null }); }}
-                  className={`px-3 py-1 font-sans text-[10px] font-black uppercase tracking-widest transition-colors rounded-sm ${selectedLang === l ? 'bg-[var(--color-nexus-red)] text-white' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {l === 'en' ? 'EN' : l === 'hi' ? 'HI' : 'ALL'}
-                </button>
-              ))}
+            <div className="flex items-center bg-stone-900 border border-stone-700 rounded-md p-0.5 text-xs mr-3">
+              <button
+                onClick={() => handleLanguageChange('en')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                  selectedLang === 'en'
+                    ? 'bg-[#D32F2F] text-white shadow'
+                    : 'text-stone-400 hover:text-white'
+                }`}
+              >
+                ENGLISH
+              </button>
+              <button
+                onClick={() => handleLanguageChange('hi')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                  selectedLang === 'hi'
+                    ? 'bg-[#D32F2F] text-white shadow'
+                    : 'text-stone-400 hover:text-white'
+                }`}
+              >
+                हिन्दी
+              </button>
             </div>
             
             {/* Saved Dispatches */}
@@ -547,7 +563,7 @@ function HomeContent() {
             <h2 className="text-2xl font-bold mb-4 font-serif">Failed to fetch the edition</h2>
             <p className="mb-8 text-gray-500 font-sans">{error}</p>
             <button
-              onClick={() => fetchNews(activeCategory, selectedDate, selectedState, selectedCity)}
+              onClick={() => fetchNews(activeCategory, selectedDate, selectedState, selectedCity, selectedLang)}
               className="bg-[var(--color-nexus-dark)] text-white px-8 py-3 uppercase tracking-widest text-xs font-bold hover:bg-[var(--color-nexus-red)] transition-colors"
             >
               Retry Connection
