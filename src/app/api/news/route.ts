@@ -7,7 +7,7 @@ export const revalidate = 600;
 
 const parser = new Parser({
   customFields: {
-    item: ['media:content', 'media:thumbnail', 'enclosure', 'content:encoded', 'description'],
+    item: ['media:content', 'media:thumbnail', 'enclosure', 'content:encoded', 'description', 'source'],
   },
 });
 
@@ -54,6 +54,9 @@ function isValidImage(url: string | null | undefined): boolean {
   if (!url || typeof url !== 'string' || url.trim() === '' || url === 'null' || url === 'undefined') return false;
   const lurl = url.toLowerCase();
   if (lurl.includes('feedburner') || lurl.includes('1x1') || lurl.includes('pixel')) {
+    return false;
+  }
+  if (lurl.includes('google.com') || lurl.includes('googleusercontent.com') || lurl.includes('/logos/') || lurl.includes('/branding/')) {
     return false;
   }
   try {
@@ -140,6 +143,32 @@ function isCurrentAffairs(title: string, snippet: string): boolean {
   return keywords.some(kw => text.includes(kw));
 }
 
+function extractSourceName(item: any, feedTitle: string, fallback: string, stateName?: string): string {
+  let src = '';
+  if (item.source) {
+    if (typeof item.source === 'string') {
+      src = item.source;
+    } else if (typeof item.source === 'object' && item.source._) {
+      src = item.source._;
+    }
+  }
+  
+  if (!src) {
+    src = feedTitle || fallback;
+  }
+
+  const upperSrc = src.toUpperCase();
+  if (upperSrc.includes('LOCATION:') || upperSrc.includes('WHEN:') || upperSrc.includes('GOOGLE NEWS') || upperSrc.includes('GOOGLE समाचार')) {
+    if (stateName) {
+      if (stateName.toUpperCase() === 'UTTAR PRADESH' || stateName.toUpperCase() === 'UP') return 'UP REGIONAL DESK';
+      return `${stateName.toUpperCase()} REGIONAL DESK`;
+    }
+    return 'REGIONAL DESK';
+  }
+  
+  return src;
+}
+
 // Helper to slugify titles for deduplication
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -176,7 +205,7 @@ export async function GET(request: Request) {
           title: articleTitle,
           link: item.link || '#',
           pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-          source: feed.title || source,
+          source: extractSourceName(item, feed.title || '', source),
           snippet: processSnippet(rawSnippet),
           thumbnail: await extractImage(item, articleTitle, articleCat),
           category: articleCat,
@@ -236,7 +265,7 @@ export async function GET(request: Request) {
                 title: articleTitle,
                 link: item.link || '#',
                 pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-                source: feed.title || source,
+                source: extractSourceName(item, feed.title || '', source, stateName),
                 snippet: snippetText,
                 thumbnail,
                 category: finalCategory,
@@ -297,7 +326,7 @@ export async function GET(request: Request) {
                             title: articleTitle,
                             link: item.link || '#',
                             pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-                            source: feed.title || source,
+                            source: extractSourceName(item, feed.title || '', source, STATE_NAMES[stateParam] || stateParam),
                             snippet: snippetText,
                             thumbnail,
                             category: 'state-news',
