@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Parser from 'rss-parser';
 import * as cheerio from 'cheerio';
-import { LIVE_FEED_URLS, Category, getHistoricalArchiveUrl } from '@/config/feeds';
+import { LIVE_FEED_URLS, Category, getHistoricalArchiveUrl, STATE_FEEDS, STATE_NAMES, PIB_HINDI_FALLBACK } from '@/config/feeds';
 
 export const revalidate = 600;
 
@@ -20,6 +20,7 @@ export interface NewsItem {
   snippet: string;
   thumbnail: string | null;
   category: string;
+  stateName?: string;
 }
 
 function decodeHTMLEntities(text: string) {
@@ -47,43 +48,7 @@ function processSnippet(rawText: string): string {
   return text.length > 120 ? text.substring(0, 117) + '...' : text;
 }
 
-function resolveContextualImage(title: string, category: string): string {
-  const t = title.toLowerCase();
-  
-  if (t.match(/\b(health|hospital|medical|doctor|disease|virus|medicine)\b/)) {
-    return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80';
-  }
-  if (t.match(/\b(aviation|aerodrome|flight|airport|airplane|airline|aircraft)\b/)) {
-    return 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&auto=format&fit=crop&q=80';
-  }
-  if (t.match(/\b(minister|cabinet|yojana|govt|government|mantri|parliament|lok\ssabha|rajya\ssabha|modi|bjp|congress|governance|policy)\b/)) {
-    return 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800&auto=format&fit=crop&q=80';
-  }
-  if (t.match(/\b(art|heritage|culture|museum|festival|tradition)\b/)) {
-    return 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80';
-  }
-  if (t.match(/\b(economy|bank|finance|business|banking|market|sensex|nifty|gdp|inflation|trade|tax|udyog)\b/)) {
-    return 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format&fit=crop&q=80';
-  }
-  if (t.match(/\b(defence|military|army|navy|security|tactical|missile|soldier|troop|border)\b/)) {
-    return 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80';
-  }
-  
-  // Rotating Default Fallbacks based on title hash
-  const fallbacks = [
-    "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=80"
-  ];
-  
-  const hash = Math.abs(title.split('').reduce((a, b) => a + b.charCodeAt(0), 0));
-  return fallbacks[hash % fallbacks.length];
-}
+
 
 function isValidImage(url: string | null | undefined): boolean {
   if (!url || typeof url !== 'string' || url.trim() === '' || url === 'null' || url === 'undefined') return false;
@@ -136,7 +101,7 @@ async function fetchOpenGraphImage(url: string): Promise<string | null> {
   return null;
 }
 
-async function extractImage(item: any, title: string, category: string): Promise<string> {
+async function extractImage(item: any, title: string, category: string): Promise<string | null> {
   let extractedUrl: string | null = null;
   
   if (item['media:content'] && item['media:content']['$'] && item['media:content']['$']['url']) {
@@ -165,7 +130,7 @@ async function extractImage(item: any, title: string, category: string): Promise
     }
   }
   
-  return resolveContextualImage(title, category);
+  return null;
 }
 
 // Auto-tagging engine for Current Affairs
@@ -182,7 +147,8 @@ function slugify(text: string) {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const categoryParam = (searchParams.get('category') as Category) || 'all';
+  const categoryParam = (searchParams.get('category') as Category | 'state-news') || 'all';
+  const stateParam = searchParams.get('state');
   const dateStr = searchParams.get('date');
   
   const today = new Date();
@@ -190,7 +156,7 @@ export async function GET(request: Request) {
   const isPastDate = dateStr && dateStr !== todayStr;
 
   let allItems: NewsItem[] = [];
-  const counts: Record<string, number> = { all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0 };
+  const counts: Record<string, number> = { all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 };
   const lastUpdated = new Date().toISOString();
 
   try {
@@ -228,26 +194,40 @@ export async function GET(request: Request) {
       // Live Mode: Fetch ALL feeds for the 4 core categories
       const categoriesToFetch: (keyof typeof LIVE_FEED_URLS)[] = ['upsc', 'economy', 'science', 'world'];
       
-      const fetchPromises = categoriesToFetch.flatMap(cat => {
+      const fetchPromises: Promise<any>[] = categoriesToFetch.flatMap(cat => {
         const urls = LIVE_FEED_URLS[cat];
         return urls.map(url => 
           parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: cat }))
         );
       });
 
+      if (categoryParam === 'state-news') {
+        if (stateParam && STATE_FEEDS[stateParam]) {
+           STATE_FEEDS[stateParam].forEach(url => fetchPromises.push(
+             parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam }))
+           ));
+        } else {
+           Object.entries(STATE_FEEDS).forEach(([st, urls]) => {
+             urls.forEach(url => fetchPromises.push(
+               parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[st] || st }))
+             ));
+           });
+        }
+      }
+
       const results = await Promise.allSettled(fetchPromises);
       let parsePromises: Promise<NewsItem>[] = [];
 
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
-          const { feed, source, category } = result.value;
+          const { feed, source, category, stateName } = result.value;
           
-          feed.items.forEach((item) => {
+          feed.items.forEach((item: any) => {
             const rawSnippet = item.description || item.contentSnippet || item['content:encoded'] || '';
             const articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
             const snippetText = processSnippet(rawSnippet);
             
-            const isCA = isCurrentAffairs(articleTitle, snippetText);
+            const isCA = category !== 'state-news' && isCurrentAffairs(articleTitle, snippetText);
             const finalCategory = isCA ? 'current-affairs' : category;
             
             parsePromises.push(
@@ -260,6 +240,7 @@ export async function GET(request: Request) {
                 snippet: snippetText,
                 thumbnail,
                 category: finalCategory,
+                stateName
               }))
             );
           });
@@ -287,10 +268,64 @@ export async function GET(request: Request) {
       counts.economy = allItems.filter(i => i.category === 'economy').length;
       counts.science = allItems.filter(i => i.category === 'science').length;
       counts.world = allItems.filter(i => i.category === 'world').length;
+      counts['state-news'] = allItems.filter(i => i.category === 'state-news').length;
 
       // Filter if a specific category was requested
       if (categoryParam !== 'all') {
         allItems = allItems.filter(i => i.category === categoryParam);
+        
+        if (categoryParam === 'state-news' && stateParam) {
+           allItems = allItems.filter(i => i.stateName === (STATE_NAMES[stateParam] || stateParam));
+           
+           if (allItems.length < 5) {
+             try {
+                const fallbackPromises = PIB_HINDI_FALLBACK.map(url => 
+                   parser.parseURL(url).then(feed => ({ feed, source: 'PIB Regional' }))
+                );
+                const fallbackResults = await Promise.allSettled(fallbackPromises);
+                const fallbackParsePromises: Promise<NewsItem>[] = [];
+                
+                fallbackResults.forEach(res => {
+                  if (res.status === 'fulfilled') {
+                     const { feed, source } = res.value;
+                     feed.items.slice(0, 10).forEach((item: any) => {
+                        const articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
+                        const snippetText = processSnippet(item.description || item.contentSnippet || '');
+                        fallbackParsePromises.push(
+                          extractImage(item, articleTitle, 'state-news').then(thumbnail => ({
+                            id: item.guid || item.link || String(Math.random()),
+                            title: articleTitle,
+                            link: item.link || '#',
+                            pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+                            source: feed.title || source,
+                            snippet: snippetText,
+                            thumbnail,
+                            category: 'state-news',
+                            stateName: STATE_NAMES[stateParam] || stateParam
+                          }))
+                        );
+                     });
+                  }
+                });
+                
+                const fallbackItemsSettled = await Promise.allSettled(fallbackParsePromises);
+                const fallbackItems = fallbackItemsSettled.filter(p => p.status === 'fulfilled').map(p => (p as PromiseFulfilledResult<NewsItem>).value);
+                
+                allItems = [...allItems, ...fallbackItems];
+                
+                const seenSlugsFallback = new Set<string>();
+                allItems = allItems.filter((item) => {
+                  const slug = slugify(item.title);
+                  if (seenSlugsFallback.has(slug)) return false;
+                  seenSlugsFallback.add(slug);
+                  return true;
+                });
+                allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+             } catch (e) {
+                console.error("Fallback error", e);
+             }
+           }
+        }
       }
     }
 

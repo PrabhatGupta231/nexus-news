@@ -22,6 +22,7 @@ export default function NewsCard({
   onBookmarkToggle
 }: NewsCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     // Cleanup speech when unmounting
@@ -92,26 +93,32 @@ export default function NewsCard({
       </div>
 
       {/* Image Container (Fixed Aspect Ratio) */}
-      <div className="relative w-full pt-[56.25%] overflow-hidden bg-gray-100">
-        {article.thumbnail ? (
+      {article.thumbnail && !imageError && (
+        <div className="relative w-full pt-[56.25%] overflow-hidden bg-gray-100">
           <Image
             src={article.thumbnail}
             alt={article.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-700"
+            onError={() => setImageError(true)}
           />
-        ) : (
-          <div className="absolute inset-0 bg-gray-200"></div>
-        )}
-        <div className="absolute top-4 left-4 z-10">
-          <span className="bg-white text-[var(--color-nexus-dark)] text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">
-            {article.source}
-          </span>
+          <div className="absolute top-4 left-4 z-10">
+            <span className="bg-white text-[var(--color-nexus-dark)] text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">
+              {article.source}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content Container (Separated) */}
       <div className="p-6 flex flex-col flex-grow bg-white">
+        {(!article.thumbnail || imageError) && (
+          <div className="mb-4 flex items-center">
+            <span className="bg-gray-100 text-[var(--color-nexus-dark)] text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm border border-[var(--color-nexus-border)] rounded-sm">
+              {article.source}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between items-start mb-3">
           <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             {!isPastDate ? (
@@ -132,8 +139,13 @@ export default function NewsCard({
                 EXAM DESK
               </span>
             )}
+            {article.category === 'state-news' && article.stateName && (
+              <span className="bg-[#D32F2F] text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm shadow-sm">
+                {article.stateName === 'Uttar Pradesh' ? 'UP DESK' : `${article.stateName.toUpperCase()} DESK`}
+              </span>
+            )}
             <span className="bg-gray-100 text-gray-600 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm">
-              {article.category === 'current-affairs' ? 'CURRENT AFFAIRS' : article.category}
+              {article.category === 'current-affairs' ? 'CURRENT AFFAIRS' : article.category === 'state-news' ? 'STATE NEWS' : article.category}
             </span>
           </div>
         </div>

@@ -1,4 +1,4 @@
-export type Category = 'all' | 'upsc' | 'current-affairs' | 'economy' | 'science' | 'world';
+export type Category = 'all' | 'upsc' | 'current-affairs' | 'economy' | 'science' | 'world' | 'state-news';
 
 export const NEWS_CATEGORIES = [
   { id: 'all', label: 'All Headlines' },
@@ -29,6 +29,22 @@ export const LIVE_FEED_URLS = {
     'https://www.thehindu.com/news/international/feeder/default.rss'
   ]
 };
+
+export const STATE_FEEDS: Record<string, string[]> = {
+  'uttar-pradesh': ['https://news.google.com/rss/search?q=location:uttar+pradesh+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
+  'bihar': ['https://news.google.com/rss/search?q=location:bihar+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
+  'madhya-pradesh': ['https://news.google.com/rss/search?q=location:madhya+pradesh+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
+  'delhi-ncr': ['https://news.google.com/rss/search?q=location:delhi+when:2d&hl=hi&gl=IN&ceid=IN:hi'],
+};
+
+export const STATE_NAMES: Record<string, string> = {
+  'uttar-pradesh': 'Uttar Pradesh',
+  'bihar': 'Bihar',
+  'madhya-pradesh': 'Madhya Pradesh',
+  'delhi-ncr': 'Delhi NCR',
+};
+
+export const PIB_HINDI_FALLBACK = ['https://pib.gov.in/RssMain.aspx?ModId=6&Lang=2'];
 
 export function getHistoricalArchiveUrl(category: Category, dateStr: string): string {
   // Google News search bounded by dates

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NEWS_CATEGORIES, Category } from '@/config/feeds';
 import { NewsItem } from '@/app/api/news/route';
 import { Search, Loader2, Mail, ExternalLink, Calendar, RefreshCw, Clock, Bookmark, X, Volume2, Share2 } from 'lucide-react';
@@ -19,15 +19,17 @@ interface CategoryCounts {
   economy: number;
   science: number;
   world?: number;
+  'state-news'?: number;
 }
 
 export default function Home() {
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [activeCategory, setActiveCategory] = useState<Category>('all');
+  const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>('all');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [selectedState, setSelectedState] = useState<string>('');
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0 });
+  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,25 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState<NewsItem[]>([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setMoreDropdownOpen(false);
+      }
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) {
+        setMobileDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const isPastDate = selectedDate !== todayStr;
 
@@ -68,11 +89,12 @@ export default function Home() {
     });
   };
 
-  const fetchNews = async (category: Category, dateStr: string, isBackgroundSync = false) => {
+  const fetchNews = async (category: Category | 'state-news', dateStr: string, state: string = '', isBackgroundSync = false) => {
     if (!isBackgroundSync) setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/news?category=${category}&date=${dateStr}`);
+      const url = state ? `/api/news?category=${category}&date=${dateStr}&state=${state}` : `/api/news?category=${category}&date=${dateStr}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
       setNews(data.articles || []);
@@ -93,17 +115,17 @@ export default function Home() {
 
   useEffect(() => {
     if (isClient) {
-      fetchNews(activeCategory, selectedDate);
+      fetchNews(activeCategory, selectedDate, selectedState);
       
       // Background polling every 10 minutes (600,000ms) ONLY if it's today's live feed
       if (!isPastDate) {
         const intervalId = setInterval(() => {
-          fetchNews(activeCategory, selectedDate, true);
+          fetchNews(activeCategory, selectedDate, selectedState, true);
         }, 600000);
         return () => clearInterval(intervalId);
       }
     }
-  }, [activeCategory, selectedDate, isPastDate, isClient]);
+  }, [activeCategory, selectedDate, selectedState, isPastDate, isClient]);
 
   if (!isClient) return null; // Prevent hydration mismatch
 
@@ -116,9 +138,12 @@ export default function Home() {
         return article.title.toLowerCase().includes(q) || article.snippet.toLowerCase().includes(q) || article.category.toLowerCase().includes(q);
       });
 
-  const leadArticle = displayedNews[0];
-  const heroSidebarArticles = displayedNews.slice(1, 4);
-  const feedGridArticles = displayedNews.slice(4);
+  const leadArticleIndex = displayedNews.findIndex(a => a.thumbnail);
+  const leadArticle = leadArticleIndex !== -1 ? displayedNews[leadArticleIndex] : displayedNews[0];
+  
+  const remainingNews = displayedNews.filter(a => a.id !== (leadArticle?.id || ''));
+  const heroSidebarArticles = remainingNews.slice(0, 3);
+  const feedGridArticles = remainingNews.slice(3);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -233,8 +258,57 @@ export default function Home() {
       {/* 3. Sticky Navigation Bar */}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[var(--color-nexus-border)] shadow-sm">
         <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center">
-          <nav className="flex overflow-x-auto hide-scrollbar">
-            {NEWS_CATEGORIES.map((cat) => (
+          {/* Mobile Navigation */}
+          <div className="block md:hidden w-full py-3" ref={mobileDropdownRef}>
+            <button 
+              onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+              className="w-full bg-gray-50 border border-gray-200 px-4 py-3 text-xs font-black uppercase tracking-widest flex justify-between items-center"
+            >
+              <span>
+                {activeCategory === 'state-news' 
+                  ? (selectedState ? (selectedState === 'uttar-pradesh' ? 'Uttar Pradesh (UP)' : selectedState === 'bihar' ? 'Bihar' : selectedState === 'madhya-pradesh' ? 'Madhya Pradesh' : 'Delhi NCR') : 'STATE DISPATCHES')
+                  : NEWS_CATEGORIES.find(c => c.id === activeCategory)?.label || 'CATEGORIES'}
+              </span>
+              <span className="text-[10px] text-gray-500">{mobileDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            
+            {mobileDropdownOpen && (
+              <div className="absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-50 max-h-[60vh] overflow-y-auto">
+                {NEWS_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setActiveCategory(cat.id as Category); setMobileDropdownOpen(false); setShowBookmarks(false); }}
+                    className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${activeCategory === cat.id ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+                
+                {/* State Dispatches in Mobile */}
+                <div className="bg-gray-50 border-b border-gray-100">
+                  <div className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">STATE DISPATCHES / राज्य</div>
+                  {['All States', 'uttar-pradesh', 'bihar', 'madhya-pradesh', 'delhi-ncr'].map(st => {
+                     const stLabel = st === 'All States' ? 'All States' : st === 'uttar-pradesh' ? 'Uttar Pradesh (UP)' : st === 'bihar' ? 'Bihar' : st === 'madhya-pradesh' ? 'Madhya Pradesh' : 'Delhi NCR';
+                     const isActive = activeCategory === 'state-news' && selectedState === (st === 'All States' ? '' : st);
+                     return (
+                       <button
+                         key={st}
+                         onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setMobileDropdownOpen(false); setShowBookmarks(false); }}
+                         className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
+                       >
+                         {stLabel}
+                       </button>
+                     );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center">
+            {/* Primary Tabs */}
+            {NEWS_CATEGORIES.filter(cat => ['all', 'current-affairs', 'upsc'].includes(cat.id)).map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => { setActiveCategory(cat.id as Category); setShowBookmarks(false); }}
@@ -253,6 +327,63 @@ export default function Home() {
                 )}
               </button>
             ))}
+            
+            {/* More Desks Dropdown */}
+            <div className="relative group" ref={dropdownRef}>
+              <button
+                onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
+                className={`whitespace-nowrap px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative flex items-center gap-2 ${
+                  (!['all', 'current-affairs', 'upsc'].includes(activeCategory) || showBookmarks)
+                    ? 'text-[var(--color-nexus-red)]'
+                    : 'text-gray-600 hover:text-[var(--color-nexus-dark)]'
+                }`}
+              >
+                MORE DESKS <span className="text-[10px] text-gray-500 ml-1">▼</span>
+                {(!['all', 'current-affairs', 'upsc'].includes(activeCategory) || showBookmarks) && (
+                  <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[var(--color-nexus-red)]"></div>
+                )}
+              </button>
+              
+              {moreDropdownOpen && (
+                <div className="absolute top-full left-0 bg-white border border-[var(--color-nexus-border)] shadow-xl min-w-[240px] z-50 rounded-sm">
+                  {NEWS_CATEGORIES.filter(cat => !['all', 'current-affairs', 'upsc'].includes(cat.id)).map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => { setActiveCategory(cat.id as Category); setMoreDropdownOpen(false); setShowBookmarks(false); }}
+                      className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 flex items-center justify-between ${activeCategory === cat.id && !showBookmarks ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50 hover:text-[var(--color-nexus-red)]'}`}
+                    >
+                      {cat.label}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${activeCategory === cat.id && !showBookmarks ? 'bg-[var(--color-nexus-red)]/10 text-[var(--color-nexus-red)]' : 'bg-gray-100 text-gray-400'}`}>
+                        {(tabCounts as Record<string, number>)[cat.id] || 0}
+                      </span>
+                    </button>
+                  ))}
+                  
+                  {/* State Dispatches Sub-menu style */}
+                  <div className="bg-gray-50">
+                    <div className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center justify-between border-b border-gray-100">
+                      STATE DISPATCHES / राज्य
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${activeCategory === 'state-news' && !showBookmarks ? 'bg-[var(--color-nexus-red)]/10 text-[var(--color-nexus-red)]' : 'bg-gray-100 text-gray-400'}`}>
+                        {(tabCounts as Record<string, number>)['state-news'] || 0}
+                      </span>
+                    </div>
+                    {['All States', 'uttar-pradesh', 'bihar', 'madhya-pradesh', 'delhi-ncr'].map(st => {
+                       const stLabel = st === 'All States' ? 'All States' : st === 'uttar-pradesh' ? 'Uttar Pradesh (UP)' : st === 'bihar' ? 'Bihar' : st === 'madhya-pradesh' ? 'Madhya Pradesh' : 'Delhi NCR';
+                       const isActive = activeCategory === 'state-news' && selectedState === (st === 'All States' ? '' : st) && !showBookmarks;
+                       return (
+                         <button
+                           key={st}
+                           onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setMoreDropdownOpen(false); setShowBookmarks(false); }}
+                           className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-white hover:text-[var(--color-nexus-red)]'}`}
+                         >
+                           {stLabel}
+                         </button>
+                       );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </nav>
           
           <div className="hidden md:flex items-center gap-2 pl-4 border-l border-[var(--color-nexus-border)] py-4 relative">
@@ -273,6 +404,17 @@ export default function Home() {
         </div>
       </div>
 
+      {activeCategory === 'state-news' && selectedState === 'uttar-pradesh' && (
+        <div className="bg-gray-50 border-b border-[var(--color-nexus-border)] py-2 px-4 flex items-center justify-center gap-4 text-xs font-bold z-30 relative">
+          <span className="text-gray-400 uppercase tracking-widest">Cities:</span>
+          {['Lucknow', 'Varanasi', 'Prayagraj', 'Kanpur'].map(city => (
+            <button key={city} onClick={() => setSearchQuery(city)} className="text-gray-600 hover:text-[var(--color-nexus-red)] transition-colors uppercase tracking-widest">
+              {city}
+            </button>
+          ))}
+        </div>
+      )}
+
       <main className="flex-grow max-w-[1400px] mx-auto px-4 py-12 w-full">
         {loading ? (
           <div className="flex justify-center items-center py-32 flex-col gap-6">
@@ -284,7 +426,7 @@ export default function Home() {
             <h2 className="text-2xl font-bold mb-4 font-serif">Failed to fetch the edition</h2>
             <p className="mb-8 text-gray-500 font-sans">{error}</p>
             <button
-              onClick={() => fetchNews(activeCategory, selectedDate)}
+              onClick={() => fetchNews(activeCategory, selectedDate, selectedState)}
               className="bg-[var(--color-nexus-dark)] text-white px-8 py-3 uppercase tracking-widest text-xs font-bold hover:bg-[var(--color-nexus-red)] transition-colors"
             >
               Retry Connection
@@ -307,41 +449,69 @@ export default function Home() {
                 {/* Primary Lead Story (8 cols) */}
                 <div className="lg:col-span-8 group">
                   <div className="block">
-                    <div className="relative aspect-[16/9] w-full max-h-[380px] overflow-hidden bg-gray-100 mb-4 rounded-sm">
-                      {leadArticle.thumbnail ? (
+                    {leadArticle.thumbnail ? (
+                      <div className="relative aspect-[16/9] w-full max-h-[380px] overflow-hidden bg-gray-100 mb-4 rounded-sm">
                         <Image
                           src={leadArticle.thumbnail}
                           alt={leadArticle.title}
                           fill
                           className="object-cover transition-transform duration-1000 ease-out"
                         />
-                      ) : (
-                        <div className="absolute inset-0 bg-gray-200"></div>
-                      )}
-                      
-                      {/* Top Right Controls on Hero */}
-                      <div className="absolute top-4 right-4 z-20 flex gap-2">
-                        <button 
-                          onClick={() => {
-                            if (!('speechSynthesis' in window)) return;
-                            window.speechSynthesis.cancel();
-                            const u = new SpeechSynthesisUtterance(`${leadArticle.title}. ${leadArticle.snippet}`);
-                            window.speechSynthesis.speak(u);
-                          }}
-                          className="bg-white/90 p-2 rounded-full shadow-sm text-gray-600 hover:text-[var(--color-nexus-red)] transition-colors"
-                          title="Read Aloud"
-                        >
-                          <Volume2 className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleBookmarkToggle(leadArticle)}
-                          className={`bg-white/90 p-2 rounded-full shadow-sm transition-colors ${bookmarks.some(b => b.id === leadArticle.id) ? 'text-[var(--color-nexus-red)]' : 'text-gray-600 hover:text-[var(--color-nexus-red)]'}`}
-                          title="Bookmark"
-                        >
-                          <Bookmark className="w-5 h-5" fill={bookmarks.some(b => b.id === leadArticle.id) ? 'currentColor' : 'none'} />
-                        </button>
+                        
+                        {/* Top Right Controls on Hero */}
+                        <div className="absolute top-4 right-4 z-20 flex gap-2">
+                          <button 
+                            onClick={() => {
+                              if (!('speechSynthesis' in window)) return;
+                              window.speechSynthesis.cancel();
+                              const u = new SpeechSynthesisUtterance(`${leadArticle.title}. ${leadArticle.snippet}`);
+                              window.speechSynthesis.speak(u);
+                            }}
+                            className="bg-white/90 p-2 rounded-full shadow-sm text-gray-600 hover:text-[var(--color-nexus-red)] transition-colors"
+                            title="Read Aloud"
+                          >
+                            <Volume2 className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleBookmarkToggle(leadArticle)}
+                            className={`bg-white/90 p-2 rounded-full shadow-sm transition-colors ${bookmarks.some(b => b.id === leadArticle.id) ? 'text-[var(--color-nexus-red)]' : 'text-gray-600 hover:text-[var(--color-nexus-red)]'}`}
+                            title="Bookmark"
+                          >
+                            <Bookmark className="w-5 h-5" fill={bookmarks.some(b => b.id === leadArticle.id) ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="w-full bg-[var(--color-nexus-dark)] text-white p-8 md:p-12 mb-6 border-l-[8px] border-[var(--color-nexus-red)] relative rounded-sm shadow-md">
+                        <div className="absolute top-4 right-4 z-20 flex gap-2">
+                          <button 
+                            onClick={() => {
+                              if (!('speechSynthesis' in window)) return;
+                              window.speechSynthesis.cancel();
+                              const u = new SpeechSynthesisUtterance(`${leadArticle.title}. ${leadArticle.snippet}`);
+                              window.speechSynthesis.speak(u);
+                            }}
+                            className="bg-white/10 p-2 rounded-full text-gray-300 hover:text-[var(--color-nexus-red)] hover:bg-white transition-colors"
+                            title="Read Aloud"
+                          >
+                            <Volume2 className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleBookmarkToggle(leadArticle)}
+                            className={`bg-white/10 p-2 rounded-full transition-colors ${bookmarks.some(b => b.id === leadArticle.id) ? 'text-[var(--color-nexus-red)] bg-white/20' : 'text-gray-300 hover:text-[var(--color-nexus-red)] hover:bg-white'}`}
+                            title="Bookmark"
+                          >
+                            <Bookmark className="w-5 h-5" fill={bookmarks.some(b => b.id === leadArticle.id) ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-nexus-red)] mb-4 inline-block">NEXUS EDITORIAL</h3>
+                        <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="block">
+                           <h2 className="font-serif text-3xl md:text-5xl font-black leading-tight hover:text-[var(--color-nexus-red)] transition-colors">
+                             {leadArticle.title}
+                           </h2>
+                        </a>
+                      </div>
+                    )}
                     
                     <div className="flex items-center gap-3 mb-4 mt-3">
                       <span className="bg-[#111111] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1">
@@ -355,11 +525,13 @@ export default function Home() {
                       </span>
                     </div>
                     
-                    <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="block">
-                      <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-tight mb-2 hover:text-[#D32F2F]">
-                        {leadArticle.title}
-                      </h2>
-                    </a>
+                    {leadArticle.thumbnail && (
+                      <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="block">
+                        <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-tight mb-2 hover:text-[#D32F2F]">
+                          {leadArticle.title}
+                        </h2>
+                      </a>
+                    )}
                     
                     <p className="text-stone-600 text-sm leading-relaxed mb-4">
                       {leadArticle.snippet}
