@@ -28,6 +28,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>('all');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedCity, setSelectedCity] = useState<string>('');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -89,11 +90,13 @@ export default function Home() {
     });
   };
 
-  const fetchNews = async (category: Category | 'state-news', dateStr: string, state: string = '', isBackgroundSync = false) => {
+  const fetchNews = async (category: Category | 'state-news', dateStr: string, state: string = '', city: string = '', isBackgroundSync = false) => {
     if (!isBackgroundSync) setLoading(true);
     setError(null);
     try {
-      const url = state ? `/api/news?category=${category}&date=${dateStr}&state=${state}` : `/api/news?category=${category}&date=${dateStr}`;
+      let url = `/api/news?category=${category}&date=${dateStr}`;
+      if (state) url += `&state=${state}`;
+      if (city) url += `&location=${city}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
@@ -115,17 +118,17 @@ export default function Home() {
 
   useEffect(() => {
     if (isClient) {
-      fetchNews(activeCategory, selectedDate, selectedState);
+      fetchNews(activeCategory, selectedDate, selectedState, selectedCity);
       
       // Background polling every 10 minutes (600,000ms) ONLY if it's today's live feed
       if (!isPastDate) {
         const intervalId = setInterval(() => {
-          fetchNews(activeCategory, selectedDate, selectedState, true);
+          fetchNews(activeCategory, selectedDate, selectedState, selectedCity, true);
         }, 600000);
         return () => clearInterval(intervalId);
       }
     }
-  }, [activeCategory, selectedDate, selectedState, isPastDate, isClient]);
+  }, [activeCategory, selectedDate, selectedState, selectedCity, isPastDate, isClient]);
 
   if (!isClient) return null; // Prevent hydration mismatch
 
@@ -277,7 +280,7 @@ export default function Home() {
                 {NEWS_CATEGORIES.map(cat => (
                   <button
                     key={cat.id}
-                    onClick={() => { setActiveCategory(cat.id as Category); setMobileDropdownOpen(false); setShowBookmarks(false); }}
+                    onClick={() => { setActiveCategory(cat.id as Category); setSelectedCity(''); setMobileDropdownOpen(false); setShowBookmarks(false); }}
                     className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${activeCategory === cat.id ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
                     {cat.label}
@@ -293,7 +296,7 @@ export default function Home() {
                      return (
                        <button
                          key={st}
-                         onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setMobileDropdownOpen(false); setShowBookmarks(false); }}
+                         onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setSelectedCity(''); setMobileDropdownOpen(false); setShowBookmarks(false); }}
                          className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
                        >
                          {stLabel}
@@ -311,7 +314,7 @@ export default function Home() {
             {NEWS_CATEGORIES.filter(cat => ['all', 'current-affairs', 'upsc'].includes(cat.id)).map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => { setActiveCategory(cat.id as Category); setShowBookmarks(false); }}
+                onClick={() => { setActiveCategory(cat.id as Category); setSelectedCity(''); setShowBookmarks(false); }}
                 className={`whitespace-nowrap px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative flex items-center gap-2 ${
                   activeCategory === cat.id && !showBookmarks
                     ? 'text-[var(--color-nexus-red)]'
@@ -349,7 +352,7 @@ export default function Home() {
                   {NEWS_CATEGORIES.filter(cat => !['all', 'current-affairs', 'upsc'].includes(cat.id)).map(cat => (
                     <button
                       key={cat.id}
-                      onClick={() => { setActiveCategory(cat.id as Category); setMoreDropdownOpen(false); setShowBookmarks(false); }}
+                      onClick={() => { setActiveCategory(cat.id as Category); setSelectedCity(''); setMoreDropdownOpen(false); setShowBookmarks(false); }}
                       className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 flex items-center justify-between ${activeCategory === cat.id && !showBookmarks ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50 hover:text-[var(--color-nexus-red)]'}`}
                     >
                       {cat.label}
@@ -373,7 +376,7 @@ export default function Home() {
                        return (
                          <button
                            key={st}
-                           onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setMoreDropdownOpen(false); setShowBookmarks(false); }}
+                           onClick={() => { setActiveCategory('state-news'); setSelectedState(st === 'All States' ? '' : st); setSelectedCity(''); setMoreDropdownOpen(false); setShowBookmarks(false); }}
                            className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-white hover:text-[var(--color-nexus-red)]'}`}
                          >
                            {stLabel}
@@ -405,10 +408,20 @@ export default function Home() {
       </div>
 
       {activeCategory === 'state-news' && selectedState === 'uttar-pradesh' && (
-        <div className="bg-gray-50 border-b border-[var(--color-nexus-border)] py-2 px-4 flex items-center justify-center gap-4 text-xs font-bold z-30 relative">
+        <div className="bg-gray-50 border-b border-[var(--color-nexus-border)] py-2 px-4 flex items-center justify-center gap-4 text-xs font-bold z-30 relative flex-wrap">
           <span className="text-gray-400 uppercase tracking-widest">Cities:</span>
+          <button 
+            onClick={() => { setSelectedCity(''); setSearchQuery(''); }} 
+            className={`transition-colors uppercase tracking-widest px-3 py-1 rounded-sm ${selectedCity === '' ? 'bg-[var(--color-nexus-red)] text-white' : 'text-gray-600 hover:text-[var(--color-nexus-red)] hover:bg-gray-200'}`}
+          >
+            All UP
+          </button>
           {['Lucknow', 'Varanasi', 'Prayagraj', 'Kanpur'].map(city => (
-            <button key={city} onClick={() => setSearchQuery(city)} className="text-gray-600 hover:text-[var(--color-nexus-red)] transition-colors uppercase tracking-widest">
+            <button 
+              key={city} 
+              onClick={() => { setSelectedCity(city.toLowerCase()); setSearchQuery(''); }} 
+              className={`transition-colors uppercase tracking-widest px-3 py-1 rounded-sm ${selectedCity === city.toLowerCase() ? 'bg-stone-900 text-[var(--color-nexus-red)]' : 'text-gray-600 hover:text-[var(--color-nexus-red)] hover:bg-gray-200'}`}
+            >
               {city}
             </button>
           ))}
@@ -426,7 +439,7 @@ export default function Home() {
             <h2 className="text-2xl font-bold mb-4 font-serif">Failed to fetch the edition</h2>
             <p className="mb-8 text-gray-500 font-sans">{error}</p>
             <button
-              onClick={() => fetchNews(activeCategory, selectedDate, selectedState)}
+              onClick={() => fetchNews(activeCategory, selectedDate, selectedState, selectedCity)}
               className="bg-[var(--color-nexus-dark)] text-white px-8 py-3 uppercase tracking-widest text-xs font-bold hover:bg-[var(--color-nexus-red)] transition-colors"
             >
               Retry Connection

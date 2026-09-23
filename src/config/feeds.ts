@@ -44,6 +44,25 @@ export const STATE_NAMES: Record<string, string> = {
   'delhi-ncr': 'Delhi NCR',
 };
 
+export const CITY_FEEDS: Record<string, { name: string; url: string; hindiName: string }[]> = {
+  "lucknow": [
+    { name: "Amar Ujala Lucknow", url: "https://www.amarujala.com/rss/lucknow.xml", hindiName: "लखनऊ" },
+    { name: "Jagran Lucknow", url: "https://rss.jagran.com/rss/uttar-pradesh/lucknow.xml", hindiName: "लखनऊ" }
+  ],
+  "varanasi": [
+    { name: "Amar Ujala Varanasi", url: "https://www.amarujala.com/rss/varanasi.xml", hindiName: "वाराणसी" },
+    { name: "Jagran Varanasi", url: "https://rss.jagran.com/rss/uttar-pradesh/varanasi.xml", hindiName: "वाराणसी" }
+  ],
+  "prayagraj": [
+    { name: "Amar Ujala Prayagraj", url: "https://www.amarujala.com/rss/allahabad.xml", hindiName: "प्रयागराज" },
+    { name: "Jagran Prayagraj", url: "https://rss.jagran.com/rss/uttar-pradesh/allahabad.xml", hindiName: "प्रयागराज" }
+  ],
+  "kanpur": [
+    { name: "Amar Ujala Kanpur", url: "https://www.amarujala.com/rss/kanpur.xml", hindiName: "कानपुर" },
+    { name: "Jagran Kanpur", url: "https://rss.jagran.com/rss/uttar-pradesh/kanpur.xml", hindiName: "कानपुर" }
+  ]
+};
+
 export const PIB_HINDI_FALLBACK = ['https://pib.gov.in/RssMain.aspx?ModId=6&Lang=2'];
 
 export function getHistoricalArchiveUrl(category: Category, dateStr: string): string {

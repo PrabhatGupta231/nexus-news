@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Parser from 'rss-parser';
 import * as cheerio from 'cheerio';
-import { LIVE_FEED_URLS, Category, getHistoricalArchiveUrl, STATE_FEEDS, STATE_NAMES, PIB_HINDI_FALLBACK } from '@/config/feeds';
+import { LIVE_FEED_URLS, Category, getHistoricalArchiveUrl, STATE_FEEDS, STATE_NAMES, PIB_HINDI_FALLBACK, CITY_FEEDS } from '@/config/feeds';
 
 export const revalidate = 600;
 
@@ -178,7 +178,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const categoryParam = (searchParams.get('category') as Category | 'state-news') || 'all';
   const stateParam = searchParams.get('state');
+  const cityParam = searchParams.get('city');
   const dateStr = searchParams.get('date');
+  const locationParam = searchParams.get('location');
   
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -219,6 +221,43 @@ export async function GET(request: Request) {
       if (categoryParam !== 'all') {
         counts[categoryParam as keyof typeof counts] = allItems.length;
       }
+    } else if (locationParam) {
+      const query = encodeURIComponent(`${locationParam} uttar pradesh when:3d`);
+      const feedUrl = `https://news.google.com/rss/search?q=${query}&hl=hi&gl=IN&ceid=IN:hi`;
+      
+      const feed = await parser.parseURL(feedUrl);
+      
+      const itemPromises = feed.items.map(async (item) => {
+        let articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
+        let articleSource = extractSourceName(item, feed.title || '', 'Google News');
+        
+        const lastDashIndex = articleTitle.lastIndexOf(' - ');
+        if (lastDashIndex !== -1) {
+          articleSource = articleTitle.substring(lastDashIndex + 3).trim();
+          articleTitle = articleTitle.substring(0, lastDashIndex).trim();
+        }
+
+        const rawSnippet = item.description || item.contentSnippet || item['content:encoded'] || '';
+        const snippetText = processSnippet(rawSnippet);
+        
+        return extractImage(item, articleTitle, 'state-news').then(thumbnail => ({
+          id: item.guid || item.link || String(Math.random()),
+          title: articleTitle,
+          link: item.link || '#',
+          pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+          source: articleSource.toUpperCase(),
+          snippet: snippetText,
+          thumbnail: thumbnail || null,
+          category: 'state-news',
+          stateName: locationParam.charAt(0).toUpperCase() + locationParam.slice(1)
+        }));
+      });
+      
+      const itemsSettled = await Promise.allSettled(itemPromises);
+      allItems = itemsSettled.filter(p => p.status === 'fulfilled').map(p => (p as PromiseFulfilledResult<NewsItem>).value);
+      
+      counts.all = allItems.length;
+      counts['state-news'] = allItems.length;
     } else {
       // Live Mode: Fetch ALL feeds for the 4 core categories
       const categoriesToFetch: (keyof typeof LIVE_FEED_URLS)[] = ['upsc', 'economy', 'science', 'world'];
@@ -231,7 +270,11 @@ export async function GET(request: Request) {
       });
 
       if (categoryParam === 'state-news') {
-        if (stateParam && STATE_FEEDS[stateParam]) {
+        if (cityParam && CITY_FEEDS[cityParam.toLowerCase()]) {
+           CITY_FEEDS[cityParam.toLowerCase()].forEach(sourceObj => fetchPromises.push(
+             parser.parseURL(sourceObj.url).then(feed => ({ feed, source: sourceObj.name, category: 'state-news', stateName: 'Uttar Pradesh', isCityFeed: true }))
+           ));
+        } else if (stateParam && STATE_FEEDS[stateParam]) {
            STATE_FEEDS[stateParam].forEach(url => fetchPromises.push(
              parser.parseURL(url).then(feed => ({ feed, source: new URL(url).hostname, category: 'state-news', stateName: STATE_NAMES[stateParam] || stateParam }))
            ));
@@ -249,7 +292,7 @@ export async function GET(request: Request) {
 
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
-          const { feed, source, category, stateName } = result.value;
+          const { feed, source, category, stateName, isCityFeed } = result.value;
           
           feed.items.forEach((item: any) => {
             const rawSnippet = item.description || item.contentSnippet || item['content:encoded'] || '';
@@ -265,7 +308,7 @@ export async function GET(request: Request) {
                 title: articleTitle,
                 link: item.link || '#',
                 pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-                source: extractSourceName(item, feed.title || '', source, stateName),
+                source: isCityFeed ? source.toUpperCase() : extractSourceName(item, feed.title || '', source, stateName),
                 snippet: snippetText,
                 thumbnail,
                 category: finalCategory,
