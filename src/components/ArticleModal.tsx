@@ -17,6 +17,8 @@ interface ArticleModalProps {
 export default function ArticleModal({ article, onClose, isPastDate, isBookmarked, onBookmarkToggle }: ArticleModalProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [fullContent, setFullContent] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -36,7 +38,28 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
       document.body.style.overflow = 'hidden';
       setImageError(false);
       setIsPlaying(false);
+      setFullContent(null);
+      setIsLoading(true);
       window.speechSynthesis.cancel();
+      
+      // Fetch full content
+      fetch(`/api/article-content?url=${encodeURIComponent(article.link)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.content) {
+            setFullContent(data.content);
+          } else {
+            // Fallback to original snippet if extraction fails or yields little text
+            setFullContent(`<p>${article.snippet}</p>`);
+          }
+        })
+        .catch(() => {
+          setFullContent(`<p>${article.snippet}</p>`);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+
     } else {
       document.body.style.overflow = 'unset';
     }
@@ -66,7 +89,19 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
       setIsPlaying(false);
       return;
     }
-    const textToRead = `${article.title}. ${article.snippet}`;
+    
+    // strip HTML tags from fullContent for reading
+    let textToRead = '';
+    if (fullContent) {
+      const temp = document.createElement('div');
+      temp.innerHTML = fullContent;
+      textToRead = temp.textContent || temp.innerText || '';
+    } else {
+      textToRead = article.snippet;
+    }
+    
+    textToRead = `${article.title}. ${textToRead}`;
+    
     const utterance = new SpeechSynthesisUtterance(textToRead);
     utterance.onend = () => setIsPlaying(false);
     utterance.onerror = () => setIsPlaying(false);
@@ -127,9 +162,29 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
           )}
 
           <div className="prose prose-lg max-w-none font-sans text-stone-700 leading-relaxed mb-8">
-            <p className="text-xl md:text-2xl leading-relaxed text-stone-600 font-serif mb-6">
-              {article.snippet}
-            </p>
+            <style jsx global>{`
+              .article-body p { margin-bottom: 1.5rem; }
+            `}</style>
+            
+            {isLoading ? (
+              <>
+                <p className="text-xl md:text-2xl leading-relaxed text-stone-600 font-serif mb-6">
+                  {article.snippet}
+                </p>
+                <div className="flex items-center justify-center p-8 text-gray-400 font-sans text-sm animate-pulse">
+                   लोड हो रहा है... (Fetching complete story)
+                </div>
+              </>
+            ) : fullContent ? (
+              <div 
+                className="font-serif leading-relaxed text-stone-800 text-base md:text-lg article-body" 
+                dangerouslySetInnerHTML={{ __html: fullContent }} 
+              />
+            ) : (
+              <p className="text-xl md:text-2xl leading-relaxed text-stone-600 font-serif mb-6">
+                {article.snippet}
+              </p>
+            )}
           </div>
         </div>
 
