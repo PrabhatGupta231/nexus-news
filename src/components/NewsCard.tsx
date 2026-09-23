@@ -12,6 +12,7 @@ interface NewsCardProps {
   fontSizeClass?: string;
   isBookmarked?: boolean;
   onBookmarkToggle?: (article: NewsItem) => void;
+  onClick?: () => void;
 }
 
 export default function NewsCard({ 
@@ -19,7 +20,8 @@ export default function NewsCard({
   isPastDate = false, 
   fontSizeClass = 'text-base',
   isBookmarked = false,
-  onBookmarkToggle
+  onBookmarkToggle,
+  onClick
 }: NewsCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -71,7 +73,14 @@ export default function NewsCard({
   };
 
   return (
-    <article className="group flex flex-col bg-white border border-[var(--color-nexus-border)] shadow-sm hover:shadow-md transition-shadow h-full rounded-sm overflow-hidden relative">
+    <article 
+      className="group flex flex-col bg-white border border-[var(--color-nexus-border)] shadow-sm hover:shadow-md transition-shadow h-full rounded-sm overflow-hidden relative cursor-pointer"
+      onClick={(e) => {
+        // Prevent modal open if a control button was clicked
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) return;
+        onClick?.();
+      }}
+    >
       {/* Controls Overlay */}
       <div className="absolute top-4 right-4 z-20 flex gap-2">
         <button 
@@ -159,14 +168,12 @@ export default function NewsCard({
         </p>
         
         <div className="flex justify-between items-center mt-auto">
-          <a 
-            href={article.link} 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <button 
+            onClick={(e) => { e.stopPropagation(); onClick?.(); }}
             className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-dark)] hover:text-[var(--color-nexus-red)] transition-colors uppercase tracking-widest border-b-2 border-transparent hover:border-[var(--color-nexus-red)] pb-1"
           >
             Read Full Story <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          </button>
           <button 
             onClick={handleShare}
             className="text-gray-400 hover:text-[var(--color-nexus-red)] transition-colors"

@@ -8,6 +8,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
 import NewsCard from '@/components/NewsCard';
 import BreakingTicker from '@/components/BreakingTicker';
+import ArticleModal from '@/components/ArticleModal';
 
 type FontSize = 'text-sm' | 'text-base' | 'text-lg';
 
@@ -42,6 +43,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState<NewsItem[]>([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -518,11 +520,11 @@ export default function Home() {
                           </button>
                         </div>
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-nexus-red)] mb-4 inline-block">NEXUS EDITORIAL</h3>
-                        <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="block">
+                        <button onClick={() => setSelectedArticle(leadArticle)} className="block text-left">
                            <h2 className="font-serif text-3xl md:text-5xl font-black leading-tight hover:text-[var(--color-nexus-red)] transition-colors">
                              {leadArticle.title}
                            </h2>
-                        </a>
+                        </button>
                       </div>
                     )}
                     
@@ -539,11 +541,11 @@ export default function Home() {
                     </div>
                     
                     {leadArticle.thumbnail && (
-                      <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="block">
+                      <button onClick={() => setSelectedArticle(leadArticle)} className="block text-left">
                         <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-tight mb-2 hover:text-[#D32F2F]">
                           {leadArticle.title}
                         </h2>
-                      </a>
+                      </button>
                     )}
                     
                     <p className="text-stone-600 text-sm leading-relaxed mb-4">
@@ -551,9 +553,9 @@ export default function Home() {
                     </p>
                     
                     <div className="flex items-center justify-between">
-                      <a href={leadArticle.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-red)] uppercase tracking-widest hover:border-b-2 hover:border-[var(--color-nexus-red)] pb-1">
+                      <button onClick={() => setSelectedArticle(leadArticle)} className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-red)] uppercase tracking-widest hover:border-b-2 hover:border-[var(--color-nexus-red)] pb-1">
                         Read Full Story <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                      </button>
                       <button 
                         onClick={async () => {
                           if (navigator.share) {
@@ -579,7 +581,7 @@ export default function Home() {
                   
                   {heroSidebarArticles.map((article) => (
                     <article key={article.id} className="group border-b border-[var(--color-nexus-border)] pb-6 last:border-0 last:pb-0 relative">
-                      <a href={article.link} target="_blank" rel="noopener noreferrer" className="flex items-start gap-4">
+                      <button onClick={() => setSelectedArticle(article)} className="flex items-start gap-4 text-left w-full">
                         <div className="flex-grow">
                           <span className="text-[var(--color-nexus-red)] text-[10px] font-black uppercase tracking-widest mb-1 block">
                             {article.source}
@@ -604,7 +606,7 @@ export default function Home() {
                             />
                           </div>
                         )}
-                      </a>
+                      </button>
                       
                       {/* Mini Bookmark Overlay */}
                       <button 
@@ -633,6 +635,7 @@ export default function Home() {
                       fontSizeClass={fontSize}
                       isBookmarked={bookmarks.some(b => b.id === article.id)}
                       onBookmarkToggle={handleBookmarkToggle}
+                      onClick={() => setSelectedArticle(article)}
                     />
                   ))}
                  </div>
@@ -752,6 +755,14 @@ export default function Home() {
            </div>
         </div>
       </footer>
+
+      <ArticleModal 
+        article={selectedArticle}
+        onClose={() => setSelectedArticle(null)}
+        isPastDate={isPastDate}
+        isBookmarked={selectedArticle ? bookmarks.some(b => b.id === selectedArticle.id) : false}
+        onBookmarkToggle={handleBookmarkToggle}
+      />
     </div>
   );
 }
