@@ -336,7 +336,7 @@ function HomeContent() {
           {/* Saved Dispatches */}
           <button 
             onClick={() => setShowBookmarks(!showBookmarks)}
-            className={`flex items-center gap-1 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-stone-300 hover:text-white'}`}
+            className={`hidden sm:flex items-center gap-1 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-stone-300 hover:text-white'}`}
           >
             <Bookmark className="w-3.5 h-3.5" fill={showBookmarks ? 'currentColor' : 'none'} /> 
             <span className="hidden md:inline">SAVED ({bookmarks.length})</span>
@@ -610,7 +610,13 @@ function HomeContent() {
               <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 pb-16 border-b border-[var(--color-nexus-border)]">
                 {/* Primary Lead Story (8 cols) */}
                 <div className="lg:col-span-8 group">
-                  <div className="block">
+                  <div 
+                    className="block cursor-pointer"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) return;
+                      handleSelectArticle(leadArticle);
+                    }}
+                  >
                     {leadArticle.thumbnail ? (
                       <div className="relative aspect-[16/9] w-full max-h-[380px] overflow-hidden bg-gray-100 mb-4 rounded-sm">
                         <Image
@@ -699,12 +705,10 @@ function HomeContent() {
                       {leadArticle.snippet}
                     </p>
                     
-                    <div className="flex items-center justify-between">
-                      <button onClick={() => handleSelectArticle(leadArticle)} className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-red)] uppercase tracking-widest hover:border-b-2 hover:border-[var(--color-nexus-red)] pb-1">
-                        Read Full Story <ExternalLink className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex items-center justify-end mt-2">
                       <button 
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           if (navigator.share) {
                             try { await navigator.share({ title: leadArticle.title, text: leadArticle.snippet, url: leadArticle.link }); } catch (err) {}
                           } else {

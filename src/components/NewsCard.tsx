@@ -84,7 +84,7 @@ export default function NewsCard({
 
 
       {/* Image Container (Fixed Aspect Ratio) */}
-      {article.thumbnail && !imageError && (
+      {article.thumbnail && !imageError ? (
         <div className="relative w-full pt-[56.25%] overflow-hidden bg-gray-100">
           <Image
             src={article.thumbnail}
@@ -94,7 +94,19 @@ export default function NewsCard({
             onError={() => setImageError(true)}
           />
           <div className="absolute top-4 left-4 z-10">
-            <span className="bg-white text-[var(--color-nexus-dark)] text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">
+            <span className="bg-[#1C1917] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0 shadow-sm">
+              {article.source}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full pt-[56.25%] relative bg-gradient-to-br from-stone-100 to-stone-200 border-b border-stone-200 flex flex-col items-center justify-center text-stone-400 overflow-hidden">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+            <span className="text-2xl font-serif font-black tracking-widest text-stone-300">NEXUS</span>
+            <span className="text-[10px] tracking-wider uppercase text-stone-400 font-mono mt-1 whitespace-nowrap flex-shrink-0">Editorial Dispatch</span>
+          </div>
+          <div className="absolute top-4 left-4 z-10">
+            <span className="bg-[#1C1917] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0 shadow-sm border border-[var(--color-nexus-border)]">
               {article.source}
             </span>
           </div>
@@ -103,13 +115,6 @@ export default function NewsCard({
 
       {/* Content Container (Separated) */}
       <div className="p-6 flex flex-col flex-grow bg-white">
-        {(!article.thumbnail || imageError) && (
-          <div className="mb-4 flex items-center">
-            <span className="bg-gray-100 text-[var(--color-nexus-dark)] text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm border border-[var(--color-nexus-border)] rounded-sm">
-              {article.source}
-            </span>
-          </div>
-        )}
         <div className="flex justify-between items-start mb-3">
           <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             {!isPastDate ? (
