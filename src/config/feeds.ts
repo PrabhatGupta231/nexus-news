@@ -9,7 +9,15 @@ export const NEWS_CATEGORIES = [
   { id: 'world', label: 'World Affairs' },
 ];
 
-export const ENGLISH_FEEDS = [
+export interface FeedConfig {
+  name: string;
+  url: string;
+  category: Category | string;
+  state?: string;
+  city?: string;
+}
+
+export const ENGLISH_FEEDS: FeedConfig[] = [
   { name: "The Hindu National", url: "https://www.thehindu.com/news/national/feeder/default.rss", category: "upsc" },
   { name: "Indian Express Explained", url: "https://indianexpress.com/section/explained/feed/", category: "upsc" },
   { name: "PIB English Dispatches", url: "https://pib.gov.in/RssMain.aspx?ModId=6&LangId=1", category: "current-affairs" },
@@ -18,7 +26,7 @@ export const ENGLISH_FEEDS = [
   { name: "NDTV Top Stories", url: "https://feeds.feedburner.com/ndtvnews-top-stories", category: "current-affairs" }
 ];
 
-export const HINDI_FEEDS = [
+export const HINDI_FEEDS: FeedConfig[] = [
   { name: "PIB हिन्दी", url: "https://pib.gov.in/RssMain.aspx?ModId=6&LangId=2", category: "upsc" },
   { name: "अमर उजाला राष्ट्रीय", url: "https://www.amarujala.com/rss/national-news.xml", category: "current-affairs" },
   { name: "दैनिक जागरण", url: "https://rss.jagran.com/rss/news/national.xml", category: "current-affairs" },

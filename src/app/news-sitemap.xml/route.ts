@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { LIVE_FEED_URLS, Category } from '@/config/feeds';
+import { ENGLISH_FEEDS, HINDI_FEEDS } from '@/config/feeds';
 import Parser from 'rss-parser';
 
 export const revalidate = 600; // 10 minutes cache
@@ -8,13 +8,10 @@ const parser = new Parser();
 
 export async function GET() {
   try {
-    // Fetch top articles (we can just fetch from 'all' feeds to get latest)
-    const categoriesToFetch: (keyof typeof LIVE_FEED_URLS)[] = ['upsc', 'economy', 'science', 'world'];
+    // Fetch top articles
+    const allFeeds = [...ENGLISH_FEEDS, ...HINDI_FEEDS];
     
-    const fetchPromises = categoriesToFetch.flatMap(cat => {
-      const urls = LIVE_FEED_URLS[cat];
-      return urls.map(url => parser.parseURL(url));
-    });
+    const fetchPromises = allFeeds.map(feed => parser.parseURL(feed.url));
 
     const results = await Promise.allSettled(fetchPromises);
     

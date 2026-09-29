@@ -40,6 +40,7 @@ export interface NewsItem {
   category: string;
   stateName?: string;
   lang?: 'en' | 'hi';
+  content?: string;
 }
 
 function decodeHTMLEntities(text: string) {
