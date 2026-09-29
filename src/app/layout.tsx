@@ -95,6 +95,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="google-site-verification" content="zydQkxmhYdGARmUlgRFqYRnjH-3sBfMeGC9P5aHs0ZY" />
+      </head>
       <body className={`${playfair.variable} ${inter.variable} antialiased font-sans`}>
         {children}
       </body>
