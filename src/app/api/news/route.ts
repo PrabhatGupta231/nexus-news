@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Parser from 'rss-parser';
 import * as cheerio from 'cheerio';
-import { FEEDS, Category, getHistoricalArchiveUrl, STATE_NAMES } from '@/config/feeds';
+import { ENGLISH_FEEDS, HINDI_FEEDS, Category, getHistoricalArchiveUrl, STATE_NAMES } from '@/config/feeds';
 
 export const revalidate = 600;
 
@@ -195,7 +195,8 @@ function slugify(text: string) {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const cacheKey = searchParams.toString();
+  const langParam = (searchParams.get('lang') as 'en' | 'hi') || 'en';
+  const cacheKey = `lang_${langParam}_` + searchParams.toString();
   const now = Date.now();
 
   if (globalCache[cacheKey] && now - globalCache[cacheKey].timestamp < CACHE_TTL) {
@@ -209,7 +210,7 @@ export async function GET(request: Request) {
   const cityParam = searchParams.get('city');
   const dateStr = searchParams.get('date');
   const locationParam = searchParams.get('location');
-  const langParam = (searchParams.get('lang') as 'en' | 'hi') || 'en';
+  // langParam is extracted above
   
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -290,10 +291,9 @@ export async function GET(request: Request) {
       counts.all = allItems.length;
       counts['state-news'] = allItems.length;
     } else {
-      // Live Mode: Filter unified FEEDS array
-      const targetFeeds = FEEDS.filter(f => {
-        if (f.lang !== langParam) return false;
-        
+      // Live Mode: Filter language specific array
+      const selectedFeeds = langParam === 'hi' ? HINDI_FEEDS : ENGLISH_FEEDS;
+      const targetFeeds = selectedFeeds.filter((f: any) => {
         if (categoryParam !== 'all') {
           if (categoryParam === 'state-news') {
              if (f.category !== 'state-news') return false;
@@ -311,7 +311,7 @@ export async function GET(request: Request) {
           feed, 
           source: f.name || new URL(f.url).hostname, 
           category: f.category, 
-          lang: f.lang,
+          lang: langParam,
           stateName: f.state ? (STATE_NAMES[f.state] || f.state) : undefined,
           isCityFeed: !!f.city
         }))

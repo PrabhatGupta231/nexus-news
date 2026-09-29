@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { NEWS_CATEGORIES, Category } from '@/config/feeds';
 import { NewsItem } from '@/app/api/news/route';
-import { Search, Loader2, Mail, ExternalLink, Calendar, RefreshCw, Clock, Bookmark, X, Volume2, Share2 } from 'lucide-react';
+import { Search, Loader2, Mail, ExternalLink, Calendar, RefreshCw, Clock, Bookmark, X, Volume2, Share2, BellRing } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
 import NewsCard from '@/components/NewsCard';
 import BreakingTicker from '@/components/BreakingTicker';
 import ArticleModal from '@/components/ArticleModal';
+import NotificationManager from '@/components/NotificationManager';
 
 type FontSize = 'text-sm' | 'text-base' | 'text-lg';
 
@@ -36,7 +37,6 @@ function HomeContent() {
   const initialState = searchParams.get('state') || '';
   const initialCity = searchParams.get('city') || '';
   const initialLang = searchParams.get('lang') || 'en';
-  const articleId = searchParams.get('article') || null;
 
   const [activeCategory, setActiveCategory] = useState<Category | 'state-news'>(initialTab);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -56,6 +56,7 @@ function HomeContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState<NewsItem[]>([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
@@ -75,7 +76,7 @@ function HomeContent() {
     setActiveCategory(cat);
     setSelectedCity('');
     setShowBookmarks(false);
-    updateUrl({ tab: cat, city: null, state: cat === 'state-news' ? selectedState : null, article: null });
+    updateUrl({ tab: cat, city: null, state: cat === 'state-news' ? selectedState : null });
   };
 
   const handleStateChange = (state: string) => {
@@ -83,33 +84,23 @@ function HomeContent() {
     setSelectedState(state);
     setSelectedCity('');
     setShowBookmarks(false);
-    updateUrl({ tab: 'state-news', state: state || null, city: null, article: null });
+    updateUrl({ tab: 'state-news', state: state || null, city: null });
   };
 
   const handleCityChange = (city: string) => {
     setSelectedCity(city);
     setSearchQuery('');
-    updateUrl({ city: city || null, article: null });
+    updateUrl({ city: city || null });
   };
 
   const handleSelectArticle = (article: NewsItem | null) => {
     setSelectedArticle(article);
-    updateUrl({ article: article ? article.id : null });
   };
 
   const handleLanguageChange = (lang: string) => {
     setSelectedLang(lang);
-    updateUrl({ lang, article: null });
+    updateUrl({ lang });
   };
-
-  useEffect(() => {
-    if (articleId && !selectedArticle) {
-      const found = news.find(a => a.id === articleId) || bookmarks.find(a => a.id === articleId);
-      if (found) setSelectedArticle(found);
-    } else if (!articleId && selectedArticle) {
-      setSelectedArticle(null);
-    }
-  }, [articleId, news, bookmarks, selectedArticle]);
 
 
   useEffect(() => {
@@ -139,7 +130,27 @@ function HomeContent() {
         console.error('Error parsing bookmarks', e);
       }
     }
+    setNotificationsEnabled(localStorage.getItem('nexus_notifications') === 'granted');
   }, []);
+
+  const handleToggleNotifications = async () => {
+    if (notificationsEnabled) {
+      localStorage.setItem('nexus_notifications', 'denied');
+      setNotificationsEnabled(false);
+    } else {
+      if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          localStorage.setItem('nexus_notifications', 'granted');
+          setNotificationsEnabled(true);
+        } else if (permission === 'denied') {
+          alert('Notifications were blocked. Please enable them in your browser settings.');
+        }
+      } else {
+        alert('Your browser does not support notifications.');
+      }
+    }
+  };
 
   const handleBookmarkToggle = (article: NewsItem) => {
     setBookmarks(prev => {
@@ -165,10 +176,16 @@ function HomeContent() {
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
-      setNews(data.articles || []);
+      let fetchedArticles = data.articles || [];
+      const isHindi = (text: string) => /[\u0900-\u097F]/.test(text || '');
+      if (lang === 'en') {
+        fetchedArticles = fetchedArticles.filter((a: any) => !isHindi(a.title));
+      }
+      
+      setNews(fetchedArticles);
       // Cache the latest news for instant load
-      if (!isBackgroundSync && data.articles && data.articles.length > 0) {
-        sessionStorage.setItem(`nexus_news_cache_${category}_${state}_${city}`, JSON.stringify(data.articles));
+      if (!isBackgroundSync && fetchedArticles.length > 0) {
+        sessionStorage.setItem(`nexus_news_cache_${lang}_${category}_${state}_${city}`, JSON.stringify(fetchedArticles));
       }
       if (data.counts) {
         setTabCounts(prev => ({ ...prev, ...data.counts }));
@@ -188,7 +205,7 @@ function HomeContent() {
   useEffect(() => {
     if (isClient) {
       // Try loading from session cache instantly
-      const cached = sessionStorage.getItem(`nexus_news_cache_${activeCategory}_${selectedState}_${selectedCity}`);
+      const cached = sessionStorage.getItem(`nexus_news_cache_${selectedLang}_${activeCategory}_${selectedState}_${selectedCity}`);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -213,10 +230,15 @@ function HomeContent() {
 
   if (!isClient) return null; // Prevent hydration mismatch
 
-  // Filter news by search query and language
+  const isHindi = (text: string) => /[\u0900-\u097F]/.test(text || '');
+  
+  const validBookmarks = bookmarks.filter(art => art && art.title && art.title.trim().length > 0);
+  const validNews = news.filter(art => art && art.title && art.title.trim().length > 0);
+
   const displayedNews = showBookmarks 
-    ? bookmarks 
-    : news.filter(article => {
+    ? validBookmarks 
+    : validNews.filter(article => {
+        if (selectedLang === 'en' && isHindi(article.title)) return false;
         
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -268,84 +290,87 @@ function HomeContent() {
       />
       
       {/* 1. Top Live Ticker & Utility Header */}
-      <div className="bg-[var(--color-nexus-dark)] text-white text-xs border-b border-gray-800 relative z-50">
-        <div className="max-w-[1400px] mx-auto px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-4">
-          
-          {/* Marquee / Ticker */}
+      <div className="w-full bg-[#111110] text-stone-300 border-b border-stone-800 text-xs px-3 sm:px-6 h-10 flex items-center justify-between gap-4">
+        {/* LEFT: FLASH NEWS TICKER */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden h-full">
           <BreakingTicker articles={news.slice(0, 10)} />
+        </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-6">
-            {!isPastDate && lastUpdated && (
-              <div className="hidden md:flex items-center gap-2 text-[10px] font-bold text-green-400 uppercase tracking-widest">
-                <div className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </div>
-                Live Syncing (Last synced {formatDistanceToNow(new Date(lastUpdated), { addSuffix: true })})
-              </div>
-            )}
+        {/* RIGHT: COMPACT CONTROLS */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* 1. Sync Dot */}
+          {!isPastDate && lastUpdated && (
+            <span className="hidden lg:flex items-center gap-1 text-[11px] text-emerald-400 font-medium whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              ● LIVE SYNCED
+            </span>
+          )}
 
-            {/* Font Resizer */}
-            <div className="flex items-center gap-2 bg-black/50 rounded-sm p-0.5 border border-gray-700">
-              <button onClick={() => setFontSize('text-sm')} className={`px-2 py-1 font-serif transition-colors ${fontSize === 'text-sm' ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}>A-</button>
-              <button onClick={() => setFontSize('text-base')} className={`px-2 py-1 font-serif transition-colors ${fontSize === 'text-base' ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}>A</button>
-              <button onClick={() => setFontSize('text-lg')} className={`px-2 py-1 font-serif transition-colors ${fontSize === 'text-lg' ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}>A+</button>
-            </div>
-            
-            {/* Language Toggle */}
-            <div className="flex items-center bg-stone-900 border border-stone-700 rounded-md p-0.5 text-xs mr-3">
-              <button
-                onClick={() => handleLanguageChange('en')}
-                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
-                  selectedLang === 'en'
-                    ? 'bg-[#D32F2F] text-white shadow'
-                    : 'text-stone-400 hover:text-white'
-                }`}
-              >
-                ENGLISH
-              </button>
-              <button
-                onClick={() => handleLanguageChange('hi')}
-                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
-                  selectedLang === 'hi'
-                    ? 'bg-[#D32F2F] text-white shadow'
-                    : 'text-stone-400 hover:text-white'
-                }`}
-              >
-                हिन्दी
-              </button>
-            </div>
-            
-            {/* Saved Dispatches */}
-            <button 
-              onClick={() => setShowBookmarks(!showBookmarks)}
-              className={`flex items-center gap-1.5 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-white'}`}
+          {/* 2. Language Toggle */}
+          <div className="flex items-center bg-stone-900 border border-stone-800 rounded p-0.5">
+            <button
+              onClick={() => handleLanguageChange('en')}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                selectedLang === 'en' ? 'bg-[#991B1B] text-white' : 'text-stone-400 hover:text-white'
+              }`}
             >
-              <Bookmark className="w-3.5 h-3.5" fill={showBookmarks ? 'currentColor' : 'none'} /> 
-              Saved ({bookmarks.length})
+              EN
             </button>
+            <button
+              onClick={() => handleLanguageChange('hi')}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                selectedLang === 'hi' ? 'bg-[#991B1B] text-white' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              HI
+            </button>
+          </div>
 
-            {/* Date Picker */}
-            <div className="flex items-center gap-2">
-               <Calendar className="w-3.5 h-3.5 text-gray-400" />
-               <input 
-                 type="date"
-                 max={todayStr}
-                 value={selectedDate}
-                 onChange={(e) => { setSelectedDate(e.target.value); setShowBookmarks(false); }}
-                 className="bg-transparent text-gray-300 focus:outline-none focus:text-white font-sans text-xs cursor-pointer"
-               />
-               {isPastDate && (
-                 <button 
-                   onClick={() => setSelectedDate(todayStr)}
-                   className="text-[var(--color-nexus-red)] hover:text-white transition-colors ml-1"
-                   title="Reset to Today"
-                 >
-                   <RefreshCw className="w-3.5 h-3.5" />
-                 </button>
-               )}
-            </div>
+          {/* 3. Font Size Controls */}
+          <div className="hidden sm:flex items-center gap-1 text-[11px] text-stone-400 bg-stone-900 border border-stone-800 rounded px-1.5 py-0.5">
+            <button onClick={() => setFontSize('text-sm')} className={`hover:text-white px-1 ${fontSize === 'text-sm' ? 'text-[var(--color-nexus-red)]' : ''}`}>A-</button>
+            <button onClick={() => setFontSize('text-base')} className={`font-bold px-1 ${fontSize === 'text-base' ? 'text-stone-200' : ''}`}>A</button>
+            <button onClick={() => setFontSize('text-lg')} className={`hover:text-white px-1 ${fontSize === 'text-lg' ? 'text-[var(--color-nexus-red)]' : ''}`}>A+</button>
+          </div>
+          
+          {/* Saved Dispatches */}
+          <button 
+            onClick={() => setShowBookmarks(!showBookmarks)}
+            className={`flex items-center gap-1 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-stone-300 hover:text-white'}`}
+          >
+            <Bookmark className="w-3.5 h-3.5" fill={showBookmarks ? 'currentColor' : 'none'} /> 
+            <span className="hidden md:inline">SAVED ({bookmarks.length})</span>
+          </button>
+
+          {/* 4. Alerts Bell */}
+          <button 
+            onClick={handleToggleNotifications}
+            className={`flex items-center gap-1 text-[11px] transition-colors ${notificationsEnabled ? 'text-green-400' : 'text-stone-300 hover:text-white'}`}
+            title={notificationsEnabled ? "Alerts Enabled" : "Enable Alerts"}
+          >
+            <span>🔔</span>
+            <span className="hidden md:inline">ALERTS</span>
+          </button>
+
+          {/* 5. Date */}
+          <div className="hidden xl:flex items-center gap-1.5">
+             <Calendar className="w-3.5 h-3.5 text-stone-400" />
+             <input 
+               type="date"
+               max={todayStr}
+               value={selectedDate}
+               onChange={(e) => { setSelectedDate(e.target.value); setShowBookmarks(false); }}
+               className="bg-transparent text-stone-300 focus:outline-none focus:text-white font-mono text-[11px] cursor-pointer"
+             />
+             {isPastDate && (
+               <button 
+                 onClick={() => setSelectedDate(todayStr)}
+                 className="text-[var(--color-nexus-red)] hover:text-white transition-colors ml-1"
+                 title="Reset to Today"
+               >
+                 <RefreshCw className="w-3 h-3" />
+               </button>
+             )}
           </div>
         </div>
       </div>
@@ -885,6 +910,13 @@ function HomeContent() {
         isBookmarked={selectedArticle ? bookmarks.some(b => b.id === selectedArticle.id) : false}
         onBookmarkToggle={handleBookmarkToggle}
       />
+      
+      {isClient && (
+        <NotificationManager 
+          onNewArticleSelect={handleSelectArticle} 
+          lang={selectedLang} 
+        />
+      )}
     </div>
   );
 }

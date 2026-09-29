@@ -18,7 +18,7 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [fullContent, setFullContent] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingContent, setLoadingContent] = useState<boolean>(true);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -39,25 +39,27 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
       setImageError(false);
       setIsPlaying(false);
       setFullContent(null);
-      setIsLoading(true);
       window.speechSynthesis.cancel();
+      
+      // Initialize display with description/snippet if available
+      if (article.content || article.snippet) {
+        setFullContent(article.content || article.snippet);
+      }
+      setLoadingContent(true);
       
       // Fetch full content
       fetch(`/api/article-content?url=${encodeURIComponent(article.link)}`)
         .then(res => res.json())
         .then(data => {
-          if (data.content) {
+          if (data?.content) {
             setFullContent(data.content);
-          } else {
-            // Fallback to original snippet if extraction fails or yields little text
-            setFullContent(`<p>${article.snippet}</p>`);
           }
         })
         .catch(() => {
-          setFullContent(`<p>${article.snippet}</p>`);
+          // Keep whatever was initially set
         })
         .finally(() => {
-          setIsLoading(false);
+          setLoadingContent(false);
         });
 
     } else {
@@ -112,42 +114,31 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative bg-[#FAFAF7] border border-[#E7E5E0] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl rounded-xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative max-w-2xl w-full max-h-[85vh] overflow-y-auto bg-[#FDFBF7] text-stone-900 p-6 md:p-8 rounded-xl shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-200">
         
-        {/* Header Actions */}
-        <div className="flex justify-between items-center p-4 md:px-8 border-b border-[#E7E5E0] bg-[#FAFAF7] shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="bg-[#991B1B] text-white text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded shadow-sm">
-              {article.source}
-            </span>
-            <span className="text-stone-500 text-xs font-medium tracking-normal">
-              {!isPastDate ? formatDistanceToNow(new Date(article.pubDate), { addSuffix: true }) : format(new Date(article.pubDate), 'MMMM do, yyyy')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={handleTTS} className="p-2 rounded-full hover:bg-stone-200/60 text-stone-600 transition-colors" title="Read Aloud">
-              {isPlaying ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-            </button>
-            <button onClick={handleShare} className="p-2 rounded-full hover:bg-stone-200/60 text-stone-600 transition-colors" title="Share">
-              <Share2 className="w-5 h-5" />
-            </button>
-            {onBookmarkToggle && (
-              <button onClick={() => onBookmarkToggle(article)} className={`p-2 rounded-full hover:bg-stone-200/60 transition-colors ${isBookmarked ? 'text-[#991B1B]' : 'text-stone-600'}`} title="Bookmark">
-                <Bookmark className="w-5 h-5" fill={isBookmarked ? 'currentColor' : 'none'} />
-              </button>
-            )}
-            <div className="w-px h-5 bg-[#E7E5E0] mx-2"></div>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-stone-200/60 text-stone-600 transition-colors" title="Close">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+        {/* Close Button */}
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-full bg-white shadow-sm border border-stone-200 hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors z-10" 
+          title="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Header Actions (Moved below close button or integrated) */}
+        <div className="flex items-center gap-3 mb-6 pr-12">
+          <span className="bg-[#991B1B] text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded shadow-sm">
+            {article.source}
+          </span>
+          <span className="text-stone-500 text-xs font-bold uppercase tracking-widest">
+            {!isPastDate ? formatDistanceToNow(new Date(article.pubDate), { addSuffix: true }) : format(new Date(article.pubDate), 'MMMM do, yyyy')}
+          </span>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="overflow-y-auto p-6 md:p-10 flex-grow bg-[#FAFAF7]">
-          <h1 className="font-serif text-2xl md:text-3xl font-extrabold text-[#1C1917] leading-[1.3] mb-4 tracking-tight">
-            {article.title}
-          </h1>
+
+        <h1 className="text-xl md:text-2xl font-bold font-serif leading-snug mb-4 text-stone-950">
+          {article.title}
+        </h1>
           
           {/* Separator rule */}
           <div className="border-b border-[#E7E5E0] my-4"></div>
@@ -169,9 +160,9 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
               .article-body p { margin-bottom: 1.5rem; }
             `}</style>
             
-            {isLoading ? (
+            {loadingContent && !fullContent && !article.content ? (
               <>
-                <p className="font-serif text-[17px] md:text-[18px] text-[#292524] leading-[1.8] font-normal tracking-wide">
+                <p className="text-[16px] md:text-[17px] leading-relaxed text-stone-800 font-serif">
                   {article.snippet}
                 </p>
                 <div className="flex items-center justify-center p-8 text-stone-400 font-sans text-sm animate-pulse">
@@ -180,26 +171,38 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
               </>
             ) : fullContent ? (
               <div 
-                className="font-serif text-[17px] md:text-[18px] text-[#292524] leading-[1.8] font-normal tracking-wide space-y-4 article-body" 
+                className="text-[16px] md:text-[17px] leading-relaxed text-stone-800 font-serif space-y-4 article-body" 
                 dangerouslySetInnerHTML={{ __html: fullContent }} 
               />
             ) : (
-              <p className="font-serif text-[17px] md:text-[18px] text-[#292524] leading-[1.8] font-normal tracking-wide">
+              <p className="text-[16px] md:text-[17px] leading-relaxed text-stone-800 font-serif">
                 {article.snippet}
               </p>
             )}
           </div>
-        </div>
 
-        {/* Footer Action */}
-        <div className="p-6 border-t border-[#E7E5E0] bg-[#FAFAF7] flex justify-center shrink-0">
+        {/* Footer Actions */}
+        <div className="mt-8 pt-6 border-t border-stone-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button onClick={handleTTS} className="p-2.5 rounded-full hover:bg-stone-200/60 text-stone-600 transition-colors" title="Read Aloud">
+              {isPlaying ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            <button onClick={handleShare} className="p-2.5 rounded-full hover:bg-stone-200/60 text-stone-600 transition-colors" title="Share">
+              <Share2 className="w-5 h-5" />
+            </button>
+            {onBookmarkToggle && (
+              <button onClick={() => onBookmarkToggle(article)} className={`p-2.5 rounded-full hover:bg-stone-200/60 transition-colors ${isBookmarked ? 'text-[#991B1B]' : 'text-stone-600'}`} title="Bookmark">
+                <Bookmark className="w-5 h-5" fill={isBookmarked ? 'currentColor' : 'none'} />
+              </button>
+            )}
+          </div>
           <a 
             href={article.link} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#1C1917] hover:bg-[#991B1B] text-white text-xs font-medium transition-colors shadow-sm w-full md:w-auto justify-center"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-stone-900 hover:bg-[#991B1B] text-white text-xs font-bold tracking-wide transition-colors shadow-sm w-full sm:w-auto justify-center"
           >
-            Source: {article.source} (Read on Official Portal) <ExternalLink className="w-3.5 h-3.5" />
+            Read on {article.source} <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
       </div>

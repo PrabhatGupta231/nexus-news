@@ -81,25 +81,7 @@ export default function NewsCard({
         onClick?.();
       }}
     >
-      {/* Controls Overlay */}
-      <div className="absolute top-4 right-4 z-20 flex gap-2">
-        <button 
-          onClick={handleTTS}
-          className="bg-white/90 p-1.5 rounded-full shadow-sm text-gray-600 hover:text-[var(--color-nexus-red)] transition-colors"
-          title="Read Aloud"
-        >
-          {isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-        </button>
-        {onBookmarkToggle && (
-          <button 
-            onClick={(e) => { e.preventDefault(); onBookmarkToggle(article); }}
-            className={`bg-white/90 p-1.5 rounded-full shadow-sm transition-colors ${isBookmarked ? 'text-[var(--color-nexus-red)]' : 'text-gray-600 hover:text-[var(--color-nexus-red)]'}`}
-            title="Bookmark"
-          >
-            <Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} />
-          </button>
-        )}
-      </div>
+
 
       {/* Image Container (Fixed Aspect Ratio) */}
       {article.thumbnail && !imageError && (
@@ -167,12 +149,13 @@ export default function NewsCard({
           {article.snippet}
         </p>
         
-        <div className="flex justify-between items-center mt-auto">
+        <div className="flex justify-end items-center mt-auto pt-4 border-t border-[var(--color-nexus-border)] gap-3">
           <button 
-            onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-            className="inline-flex items-center gap-1.5 text-xs font-black text-[var(--color-nexus-dark)] hover:text-[var(--color-nexus-red)] transition-colors uppercase tracking-widest border-b-2 border-transparent hover:border-[var(--color-nexus-red)] pb-1"
+            onClick={handleTTS}
+            className="text-gray-400 hover:text-[var(--color-nexus-red)] transition-colors"
+            title="Read Aloud"
           >
-            Read Full Story <ExternalLink className="w-3.5 h-3.5" />
+            {isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
           <button 
             onClick={handleShare}
@@ -181,6 +164,15 @@ export default function NewsCard({
           >
             <Share2 className="w-4 h-4" />
           </button>
+          {onBookmarkToggle && (
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBookmarkToggle(article); }}
+              className={`transition-colors ${isBookmarked ? 'text-[var(--color-nexus-red)]' : 'text-gray-400 hover:text-[var(--color-nexus-red)]'}`}
+              title="Bookmark"
+            >
+              <Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} />
+            </button>
+          )}
         </div>
       </div>
     </article>

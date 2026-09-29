@@ -11,14 +11,11 @@ export default function BreakingTicker({ articles }: BreakingTickerProps) {
   const loopItems = [...articles, ...articles];
 
   return (
-    <div className="flex items-center overflow-hidden w-full md:max-w-[50%] h-full relative">
-      {/* Fixed Sticky Badge */}
-      <div className="bg-[var(--color-nexus-red)] text-white font-bold uppercase px-3 py-0.5 tracking-wider text-[10px] sm:text-xs z-10 flex-shrink-0 shadow-[4px_0_10px_rgba(0,0,0,0.5)] h-full flex items-center">
+    <div className="flex items-center gap-2 w-full h-full">
+      <span className="bg-[#D32F2F] text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wider flex-shrink-0">
         FLASH NEWS
-      </div>
-
-      {/* Marquee Container */}
-      <div className="flex-1 overflow-hidden group ml-4 pl-2 z-10">
+      </span>
+      <div className="flex-1 overflow-hidden group z-10">
         <div className="animate-marquee group-hover:[animation-play-state:paused] flex items-center gap-6 whitespace-nowrap">
           {loopItems.map((article, idx) => (
             <div key={`${article.id}-${idx}`} className="flex items-center gap-6">
