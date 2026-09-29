@@ -84,7 +84,7 @@ export const metadata: Metadata = {
     icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📰</text></svg>'
   },
   verification: {
-    google: '856a02102dbd21ef',
+    google: 'zydQkxmhYdGARmUlgRFqYRnjH-3sBfMeGC9P5aHs0ZY',
   },
 };
 
