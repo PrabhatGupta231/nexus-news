@@ -20,24 +20,65 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "NEXUS NEWS | The Premier Academic & Aspirant Daily",
-  description: "A zero-storage editorial broadsheet curating essential dispatches for students and competitive exam aspirants. No tracking, real-time syncing.",
-  keywords: ["UPSC", "News", "Geopolitics", "Economy", "Current Affairs", "India", "World"],
-  metadataBase: new URL('http://localhost:3000'), // Adjust for prod domain later
+  metadataBase: new URL('https://nexus24news.vercel.app'),
+  title: {
+    default: 'Nexus News | Daily Editorial & Current Affairs for Aspirants',
+    template: '%s | Nexus News'
+  },
+  description: 'Real-time breaking news, PIB releases, and national editorial analysis curated for UPSC, State PSC, and competitive examination aspirants in Hindi and English.',
+  keywords: [
+    'UPSC Current Affairs',
+    'PIB News Hindi',
+    'The Hindu Editorial Analysis',
+    'Daily Aspirant News',
+    'Civil Services News Portal',
+    'Nexus News 24'
+  ],
+  authors: [{ name: 'Nexus News Editorial Desk' }],
+  creator: 'Nexus News',
+  publisher: 'Nexus News',
+  applicationName: 'Nexus News',
+  category: 'News & Current Affairs',
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large', // Mandatory for Google Discover recommendations
+      'max-snippet': -1,
+    },
+  },
   alternates: {
-    canonical: '/',
+    canonical: 'https://nexus24news.vercel.app',
+    languages: {
+      'en-IN': 'https://nexus24news.vercel.app/?lang=en',
+      'hi-IN': 'https://nexus24news.vercel.app/?lang=hi',
+    },
   },
   openGraph: {
-    title: "NEXUS NEWS | Official Edition",
-    description: "Curating essential dispatches for students and competitive exam aspirants.",
-    siteName: "NEXUS NEWS",
-    url: '/',
-    type: "website",
+    title: 'Nexus News | The Premier Academic & Aspirant Daily',
+    description: 'Comprehensive daily news aggregation and editorial dispatches for civil services aspirants.',
+    url: 'https://nexus24news.vercel.app',
+    siteName: 'Nexus News',
+    locale: 'hi_IN',
+    alternateLocale: ['en_IN'],
+    type: 'website',
+    images: [
+      {
+        url: 'https://nexus24news.vercel.app/og-banner.png',
+        width: 1200,
+        height: 630,
+        alt: 'Nexus News Editorial Banner',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "NEXUS NEWS | Official Edition",
-    description: "Curating essential dispatches for students and competitive exam aspirants.",
+    title: 'Nexus News | Aspirant Daily',
+    description: 'Daily editorial & current affairs aggregation for competitive aspirants.',
   },
   icons: {
     icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📰</text></svg>'
