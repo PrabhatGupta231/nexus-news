@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({ 
+const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: '--font-playfair',
 });
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: '--font-inter',
 });
@@ -88,6 +88,34 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'NewsMediaOrganization',
+      '@id': 'https://nexus24news.vercel.app/#organization',
+      'name': 'Nexus News',
+      'url': 'https://nexus24news.vercel.app',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://nexus24news.vercel.app/og-banner.png',
+        'width': 1200,
+        'height': 630
+      }
+    },
+    {
+      '@type': 'WebSite',
+      '@id': 'https://nexus24news.vercel.app/#website',
+      'url': 'https://nexus24news.vercel.app',
+      'name': 'Nexus News',
+      'publisher': {
+        '@id': 'https://nexus24news.vercel.app/#organization'
+      },
+      'inLanguage': ['hi-IN', 'en-IN']
+    }
+  ]
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -97,6 +125,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="google-site-verification" content="zydQkxmhYdGARmUlgRFqYRnjH-3sBfMeGC9P5aHs0ZY" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body className={`${playfair.variable} ${inter.variable} antialiased font-sans`}>
         {children}
