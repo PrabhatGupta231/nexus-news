@@ -138,6 +138,17 @@ export default function RootLayout({
         {children}
         <InstallAppPrompt />
         <AlertNotificationToast />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js');
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

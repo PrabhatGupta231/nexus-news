@@ -27,12 +27,22 @@ export default function AlertNotificationToast() {
   const handleRequestPermission = () => {
     if (!('Notification' in window)) return;
 
-    Notification.requestPermission().then((permission) => {
+    Notification.requestPermission().then(async (permission) => {
       if (permission === 'granted') {
-        new Notification('Nexus News Alerts Active 🚀', {
-          body: 'Aapko live breaking news aur editorial updates milte rahenge.',
-          icon: '/og-banner.png'
-        });
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          reg.showNotification('Nexus News Alerts Active 🚀', {
+            body: 'Aapko live breaking news aur editorial updates milte rahenge.',
+            icon: '/icon.svg',
+            badge: '/icon.svg',
+            vibrate: [200, 100, 200]
+          });
+        } else {
+          new Notification('Nexus News Alerts Active 🚀', {
+            body: 'Aapko live breaking news aur editorial updates milte rahenge.',
+            icon: '/icon.svg'
+          });
+        }
       }
       handleDismiss();
     });
