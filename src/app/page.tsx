@@ -19,6 +19,7 @@ interface CategoryCounts {
   all: number;
   upsc: number;
   'current-affairs': number;
+  entertainment?: number;
   economy: number;
   science: number;
   world?: number;
@@ -45,7 +46,7 @@ function HomeContent() {
   const [selectedCity, setSelectedCity] = useState<string>(initialCity);
   const [selectedLang, setSelectedLang] = useState<string>(initialLang);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 });
+  const [tabCounts, setTabCounts] = useState<CategoryCounts>({ all: 0, upsc: 0, 'current-affairs': 0, entertainment: 0, economy: 0, science: 0, world: 0, 'state-news': 0 });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);

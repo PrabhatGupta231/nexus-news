@@ -36,7 +36,7 @@ export default function AlertNotificationToast() {
             icon: '/icon.svg',
             badge: '/icon.svg',
             vibrate: [200, 100, 200]
-          });
+          } as any);
         } else {
           new Notification('Nexus News Alerts Active 🚀', {
             body: 'Aapko live breaking news aur editorial updates milte rahenge.',
