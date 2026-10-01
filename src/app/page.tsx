@@ -445,7 +445,7 @@ function HomeContent() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center">
             {/* Primary Tabs */}
-            {NEWS_CATEGORIES.filter(cat => ['all', 'current-affairs', 'upsc'].includes(cat.id)).map((cat) => (
+            {NEWS_CATEGORIES.filter(cat => ['all', 'upsc', 'current-affairs', 'entertainment'].includes(cat.id)).map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => handleCategoryChange(cat.id as Category)}
@@ -470,20 +470,20 @@ function HomeContent() {
               <button
                 onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
                 className={`whitespace-nowrap px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative flex items-center gap-2 ${
-                  (!['all', 'current-affairs', 'upsc'].includes(activeCategory) || showBookmarks)
+                  (!['all', 'upsc', 'current-affairs', 'entertainment'].includes(activeCategory) || showBookmarks)
                     ? 'text-[var(--color-nexus-red)]'
                     : 'text-gray-600 hover:text-[var(--color-nexus-dark)]'
                 }`}
               >
                 MORE DESKS <span className="text-[10px] text-gray-500 ml-1">▼</span>
-                {(!['all', 'current-affairs', 'upsc'].includes(activeCategory) || showBookmarks) && (
+                {(!['all', 'upsc', 'current-affairs', 'entertainment'].includes(activeCategory) || showBookmarks) && (
                   <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[var(--color-nexus-red)]"></div>
                 )}
               </button>
               
               {moreDropdownOpen && (
                 <div className="absolute top-full left-0 bg-white border border-[var(--color-nexus-border)] shadow-xl min-w-[240px] z-50 rounded-sm">
-                  {NEWS_CATEGORIES.filter(cat => !['all', 'current-affairs', 'upsc'].includes(cat.id)).map(cat => (
+                  {NEWS_CATEGORIES.filter(cat => !['all', 'upsc', 'current-affairs', 'entertainment'].includes(cat.id)).map(cat => (
                     <button
                       key={cat.id}
                       onClick={() => { handleCategoryChange(cat.id as Category); setMoreDropdownOpen(false); }}

@@ -163,6 +163,12 @@ function isCurrentAffairs(title: string, snippet: string): boolean {
   return keywords.some(kw => text.includes(kw));
 }
 
+function isEntertainment(title: string, snippet: string): boolean {
+  const text = (title + ' ' + snippet).toLowerCase();
+  const keywords = ['bollywood', 'box office', 'movie', 'actor', 'actress', 'cinema', 'ott', 'trailer', 'film', 'celebrity', 'hero', 'heroine', 'फिल्म', 'सिनेमा', 'बॉलीवुड', 'अभिनेता', 'अभिनेत्री'];
+  return keywords.some(kw => text.includes(kw));
+}
+
 function extractSourceName(item: any, feedTitle: string, fallback: string, stateName?: string): string {
   let src = '';
   if (item.source) {
@@ -218,7 +224,7 @@ export async function GET(request: Request) {
   const isPastDate = dateStr && dateStr !== todayStr;
 
   let allItems: NewsItem[] = [];
-  const counts: Record<string, number> = { all: 0, upsc: 0, 'current-affairs': 0, economy: 0, science: 0, world: 0, 'state-news': 0 };
+  const counts: Record<string, number> = { all: 0, upsc: 0, 'current-affairs': 0, entertainment: 0, economy: 0, science: 0, world: 0, 'state-news': 0 };
   const lastUpdated = new Date().toISOString();
 
   try {
@@ -331,7 +337,8 @@ export async function GET(request: Request) {
             const snippetText = processSnippet(rawSnippet);
             
             const isCA = category !== 'state-news' && isCurrentAffairs(articleTitle, snippetText);
-            const finalCategory = isCA ? 'current-affairs' : category;
+            const isEnt = category !== 'state-news' && isEntertainment(articleTitle, snippetText);
+            const finalCategory = isEnt ? 'entertainment' : (isCA ? 'current-affairs' : category);
             
             parsePromises.push(
               extractImage(item, articleTitle, finalCategory).then(thumbnail => ({
@@ -369,6 +376,7 @@ export async function GET(request: Request) {
       counts.all = allItems.length;
       counts.upsc = allItems.filter(i => i.category === 'upsc').length;
       counts['current-affairs'] = allItems.filter(i => i.category === 'current-affairs').length;
+      counts.entertainment = allItems.filter(i => i.category === 'entertainment').length;
       counts.economy = allItems.filter(i => i.category === 'economy').length;
       counts.science = allItems.filter(i => i.category === 'science').length;
       counts.world = allItems.filter(i => i.category === 'world').length;
