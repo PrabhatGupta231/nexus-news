@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
+import AlertNotificationToast from "@/components/AlertNotificationToast";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -132,6 +133,7 @@ export default function RootLayout({
       </head>
       <body className={`${playfair.variable} ${inter.variable} antialiased font-sans`}>
         {children}
+        <AlertNotificationToast />
       </body>
     </html>
   );
