@@ -10,6 +10,7 @@ import NewsCard from '@/components/NewsCard';
 import BreakingTicker from '@/components/BreakingTicker';
 import ArticleModal from '@/components/ArticleModal';
 import NotificationManager from '@/components/NotificationManager';
+import AudioNewsPlayer from '@/components/AudioNewsPlayer';
 
 type FontSize = 'text-sm' | 'text-base' | 'text-lg';
 
@@ -334,6 +335,8 @@ function HomeContent() {
           </div>
           
           {/* Saved Dispatches */}
+          <AudioNewsPlayer articles={displayedNews} lang={selectedLang} />
+          
           <button 
             onClick={() => setShowBookmarks(!showBookmarks)}
             className={`hidden sm:flex items-center gap-1 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-stone-300 hover:text-white'}`}

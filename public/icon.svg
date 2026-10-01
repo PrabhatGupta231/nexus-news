@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dark background with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="#111827"/>
+  
+  <!-- Stylized Folded 'N' -->
+  <path d="M140 380 V132 h60 l142 186 V132 h54 v248 h-60 L194 194 v186 z" fill="#F4F4F5"/>
+  <polygon points="140,132 200,132 200,240" fill="#DC2626"/>
+  <polygon points="336,380 396,380 396,272" fill="#DC2626"/>
+  
+  <!-- Live accent dot -->
+  <circle cx="430" cy="110" r="24" fill="#EF4444" />
+</svg>

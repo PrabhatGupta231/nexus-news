@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import AlertNotificationToast from "@/components/AlertNotificationToast";
+import InstallAppPrompt from "@/components/InstallAppPrompt";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -82,7 +83,9 @@ export const metadata: Metadata = {
     description: 'Daily editorial & current affairs aggregation for competitive aspirants.',
   },
   icons: {
-    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📰</text></svg>'
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
   },
   verification: {
     google: 'zydQkxmhYdGARmUlgRFqYRnjH-3sBfMeGC9P5aHs0ZY',
@@ -131,8 +134,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${playfair.variable} ${inter.variable} antialiased font-sans`}>
+      <body className={`${playfair.variable} ${inter.variable} antialiased font-sans`} suppressHydrationWarning>
         {children}
+        <InstallAppPrompt />
         <AlertNotificationToast />
       </body>
     </html>

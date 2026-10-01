@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 
 export default function AlertNotificationToast() {
+  const [mounted, setMounted] = useState(false);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (!('Notification' in window)) return;
 
     if (Notification.permission === 'default' && !localStorage.getItem('nexus_alerts_dismissed')) {
@@ -36,7 +38,7 @@ export default function AlertNotificationToast() {
     });
   };
 
-  if (!show) return null;
+  if (!mounted || !show) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 transition-opacity duration-300">
