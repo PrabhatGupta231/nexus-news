@@ -22,7 +22,7 @@ export default function BreakingTicker({ articles }: BreakingTickerProps) {
               <a 
                 href={article.link} 
                 target="_blank" 
-                rel="noopener noreferrer"
+                rel="noopener noreferrer nofollow"
                 className="text-xs font-medium text-stone-100 hover:text-red-300 tracking-wide transition-colors font-sans"
               >
                 {article.title}

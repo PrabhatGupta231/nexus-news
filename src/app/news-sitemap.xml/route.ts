@@ -42,7 +42,7 @@ export async function GET() {
     const pubDate = new Date(article.pubDate || new Date()).toISOString();
     return `
     <url>
-      <loc><![CDATA[https://nexus24news.vercel.app/?ref=${encodeURIComponent(article.guid || article.link)}]]></loc>
+      <loc><![CDATA[https://nexus24news.vercel.app/article/${encodeURIComponent(article.guid || article.link)}]]></loc>
       <news:news>
         <news:publication>
           <news:name><![CDATA[NEXUS NEWS]]></news:name>

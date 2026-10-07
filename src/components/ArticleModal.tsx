@@ -199,7 +199,7 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
           <a 
             href={article.link} 
             target="_blank" 
-            rel="noopener noreferrer"
+            rel="noopener noreferrer nofollow"
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-stone-900 hover:bg-[#991B1B] text-white text-xs font-bold tracking-wide transition-colors shadow-sm w-full sm:w-auto justify-center"
           >
             Read on {article.source} <ExternalLink className="w-3.5 h-3.5" />

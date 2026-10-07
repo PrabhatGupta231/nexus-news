@@ -5,6 +5,7 @@ export default function robots(): MetadataRoute.Robots {
         rules: {
             userAgent: '*',
             allow: '/',
+            disallow: ['/*?*', '/*?ref=*'],
         },
         sitemap: [
             'https://nexus24news.vercel.app/sitemap.xml',

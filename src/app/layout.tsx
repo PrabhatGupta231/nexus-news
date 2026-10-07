@@ -54,10 +54,10 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: 'https://nexus24news.vercel.app',
+    canonical: 'https://nexus24news.vercel.app/',
     languages: {
-      'en-IN': 'https://nexus24news.vercel.app/?lang=en',
-      'hi-IN': 'https://nexus24news.vercel.app/?lang=hi',
+      'en-IN': 'https://nexus24news.vercel.app/',
+      'hi-IN': 'https://nexus24news.vercel.app/',
     },
   },
   openGraph: {
