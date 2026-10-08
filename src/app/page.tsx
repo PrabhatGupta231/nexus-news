@@ -11,6 +11,7 @@ import BreakingTicker from '@/components/BreakingTicker';
 import ArticleModal from '@/components/ArticleModal';
 import NotificationManager from '@/components/NotificationManager';
 import AudioNewsPlayer from '@/components/AudioNewsPlayer';
+import Link from 'next/link';
 
 type FontSize = 'text-sm' | 'text-base' | 'text-lg';
 
@@ -422,6 +423,16 @@ function HomeContent() {
                   </button>
                 ))}
                 
+                <Link
+                  href="/blog"
+                  className="block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 text-gray-600 hover:bg-gray-50 flex items-center justify-between"
+                >
+                  EDITORIALS
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-[var(--color-nexus-red)] text-white shadow-sm font-bold">
+                    NEW
+                  </span>
+                </Link>
+                
                 {/* State Dispatches in Mobile */}
                 <div className="bg-gray-50 border-b border-gray-100">
                   <div className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">STATE DISPATCHES / राज्य</div>
@@ -465,6 +476,17 @@ function HomeContent() {
                 )}
               </button>
             ))}
+            
+            {/* Editorials Tab */}
+            <Link
+              href="/blog"
+              className="whitespace-nowrap px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative flex items-center gap-2 text-gray-600 hover:text-[var(--color-nexus-dark)]"
+            >
+              EDITORIALS
+              <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-[var(--color-nexus-red)] text-white shadow-sm font-bold">
+                NEW
+              </span>
+            </Link>
             
             {/* More Desks Dropdown */}
             <div className="relative group" ref={dropdownRef}>
