@@ -63,6 +63,8 @@ function HomeContent() {
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -341,10 +343,12 @@ function HomeContent() {
           
           <button 
             onClick={() => setShowBookmarks(!showBookmarks)}
-            className={`hidden sm:flex items-center gap-1 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-stone-300 hover:text-white'}`}
+            className={`flex items-center gap-1 font-bold uppercase tracking-widest text-[10px] transition-colors ${showBookmarks ? 'text-[var(--color-nexus-red)]' : 'text-stone-300 hover:text-white'}`}
+            title="Saved Articles"
           >
             <Bookmark className="w-3.5 h-3.5" fill={showBookmarks ? 'currentColor' : 'none'} /> 
             <span className="hidden md:inline">SAVED ({bookmarks.length})</span>
+            <span className="md:hidden text-[9px] bg-stone-800 text-stone-200 px-1 py-0.2 rounded-full">{bookmarks.length}</span>
           </button>
 
           {/* 4. Alerts Bell */}
@@ -358,7 +362,7 @@ function HomeContent() {
           </button>
 
           {/* 5. Date */}
-          <div className="hidden xl:flex items-center gap-1.5">
+          <div className="hidden lg:flex items-center gap-1.5">
              <Calendar className="w-3.5 h-3.5 text-stone-400" />
              <input 
                type="date"
@@ -381,16 +385,16 @@ function HomeContent() {
       </div>
 
       {/* 2. Masthead Header */}
-      <header className="w-full py-12 flex flex-col items-center justify-center border-b border-[var(--color-nexus-border)] bg-[var(--color-nexus-bg)]">
-        <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter font-serif text-[var(--color-nexus-dark)] cursor-pointer" onClick={() => setShowBookmarks(false)}>
-          NEXUS<span className="text-[var(--color-nexus-red)] ml-3">NEWS</span>
+      <header className="w-full py-8 sm:py-12 flex flex-col items-center justify-center border-b border-[var(--color-nexus-border)] bg-[var(--color-nexus-bg)]">
+        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter font-serif text-[var(--color-nexus-dark)] cursor-pointer text-center px-4" onClick={() => setShowBookmarks(false)}>
+          NEXUS<span className="text-[var(--color-nexus-red)] ml-2 sm:ml-3">NEWS</span>
         </h1>
-        <div className="flex items-center gap-4 mt-4">
-          <div className="w-12 h-[1px] bg-gray-300"></div>
-          <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs">
+        <div className="flex items-center gap-3 sm:gap-4 mt-3 sm:mt-4">
+          <div className="w-8 sm:w-12 h-[1px] bg-gray-300"></div>
+          <p className="text-gray-500 font-bold uppercase tracking-[0.18em] text-[10px] sm:text-xs text-center">
             The Premier Academic & Aspirant Daily
           </p>
-          <div className="w-12 h-[1px] bg-gray-300"></div>
+          <div className="w-8 sm:w-12 h-[1px] bg-gray-300"></div>
         </div>
       </header>
 
@@ -398,34 +402,68 @@ function HomeContent() {
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[var(--color-nexus-border)] shadow-sm">
         <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center">
           {/* Mobile Navigation */}
-          <div className="block md:hidden w-full py-3" ref={mobileDropdownRef}>
-            <button 
-              onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
-              className="w-full bg-gray-50 border border-gray-200 px-4 py-3 text-xs font-black uppercase tracking-widest flex justify-between items-center"
-            >
-              <span>
-                {activeCategory === 'state-news' 
-                  ? (selectedState ? (selectedState === 'uttar-pradesh' ? 'Uttar Pradesh (UP)' : selectedState === 'bihar' ? 'Bihar' : selectedState === 'madhya-pradesh' ? 'Madhya Pradesh' : 'Delhi NCR') : 'STATE DISPATCHES')
-                  : NEWS_CATEGORIES.find(c => c.id === activeCategory)?.label || 'CATEGORIES'}
-              </span>
-              <span className="text-[10px] text-gray-500">{mobileDropdownOpen ? '▲' : '▼'}</span>
-            </button>
+          <div className="block md:hidden w-full py-2.5 relative" ref={mobileDropdownRef}>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+                className="flex-1 bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-xs font-black uppercase tracking-wider flex justify-between items-center rounded-sm"
+              >
+                <span className="truncate">
+                  {activeCategory === 'state-news' 
+                    ? (selectedState ? (selectedState === 'uttar-pradesh' ? 'Uttar Pradesh (UP)' : selectedState === 'bihar' ? 'Bihar' : selectedState === 'madhya-pradesh' ? 'Madhya Pradesh' : 'Delhi NCR') : 'STATE DISPATCHES')
+                    : NEWS_CATEGORIES.find(c => c.id === activeCategory)?.label || 'CATEGORIES'}
+                </span>
+                <span className="text-[10px] text-gray-500 ml-2">{mobileDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+
+              <button
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                className={`p-2.5 border rounded-sm transition-colors ${mobileSearchOpen || searchQuery ? 'bg-[#991B1B] text-white border-[#991B1B]' : 'bg-gray-50 border-gray-200 text-gray-600 hover:text-black'}`}
+                title="Search dispatches"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Mobile Search Expandable Box */}
+            {mobileSearchOpen && (
+              <div className="mt-2 flex items-center gap-2 bg-stone-50 border border-stone-200 px-3 py-2 rounded-sm shadow-sm">
+                <Search className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search dispatches by title or topic..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none text-xs font-bold text-stone-800 w-full placeholder-stone-400 font-sans"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-stone-400 hover:text-[#991B1B]">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
             
             {mobileDropdownOpen && (
-              <div className="absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-50 max-h-[60vh] overflow-y-auto">
+              <div className="absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-50 max-h-[60vh] overflow-y-auto mt-1">
                 {NEWS_CATEGORIES.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => { handleCategoryChange(cat.id as Category); setMobileDropdownOpen(false); }}
-                    className={`block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${activeCategory === cat.id ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest border-b border-gray-100 flex items-center justify-between ${activeCategory === cat.id ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
-                    {cat.label}
+                    <span>{cat.label}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-gray-100 text-gray-500 font-mono">
+                      {(tabCounts as Record<string, number>)[cat.id] || 0}
+                    </span>
                   </button>
                 ))}
                 
                 <Link
                   href="/blog"
-                  className="block w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest border-b border-gray-100 text-gray-600 hover:bg-gray-50 flex items-center justify-between"
+                  onClick={() => setMobileDropdownOpen(false)}
+                  className="block w-full text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest border-b border-gray-100 text-gray-600 hover:bg-gray-50 flex items-center justify-between"
                 >
                   EDITORIALS
                   <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-[var(--color-nexus-red)] text-white shadow-sm font-bold">
@@ -435,7 +473,7 @@ function HomeContent() {
                 
                 {/* State Dispatches in Mobile */}
                 <div className="bg-gray-50 border-b border-gray-100">
-                  <div className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">STATE DISPATCHES / राज्य</div>
+                  <div className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400">STATE DISPATCHES / राज्य</div>
                   {['All States', 'uttar-pradesh', 'bihar', 'madhya-pradesh', 'delhi-ncr'].map(st => {
                      const stLabel = st === 'All States' ? 'All States' : st === 'uttar-pradesh' ? 'Uttar Pradesh (UP)' : st === 'bihar' ? 'Bihar' : st === 'madhya-pradesh' ? 'Madhya Pradesh' : 'Delhi NCR';
                      const isActive = activeCategory === 'state-news' && selectedState === (st === 'All States' ? '' : st);
@@ -443,12 +481,37 @@ function HomeContent() {
                        <button
                          key={st}
                          onClick={() => { handleStateChange(st === 'All States' ? '' : st); setMobileDropdownOpen(false); }}
-                         className={`block w-full text-left pl-8 pr-6 py-3 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
+                         className={`block w-full text-left pl-7 pr-5 py-2.5 text-xs font-bold uppercase tracking-widest border-b border-gray-100 last:border-0 ${isActive ? 'text-[var(--color-nexus-red)] bg-red-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
                        >
                          {stLabel}
                        </button>
                      );
                   })}
+                </div>
+
+                {/* Mobile Date Archive Picker */}
+                <div className="p-4 bg-stone-100/70 border-t border-gray-200 flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-stone-600" /> Archive Date:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="date"
+                      max={todayStr}
+                      value={selectedDate}
+                      onChange={(e) => { setSelectedDate(e.target.value); setShowBookmarks(false); setMobileDropdownOpen(false); }}
+                      className="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-mono text-stone-700 cursor-pointer"
+                    />
+                    {isPastDate && (
+                      <button 
+                        onClick={() => { setSelectedDate(todayStr); setMobileDropdownOpen(false); }}
+                        className="text-[var(--color-nexus-red)] p-1 hover:bg-white rounded transition-colors"
+                        title="Reset to Today"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -621,13 +684,25 @@ function HomeContent() {
             </button>
           </div>
         ) : displayedNews.length === 0 ? (
-          <div className="text-center py-32 border-y border-[var(--color-nexus-border)]">
-            <h2 className="text-3xl font-bold text-gray-300 font-serif">
+          <div className="text-center py-24 sm:py-32 border-y border-[var(--color-nexus-border)] bg-white px-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-400 font-serif">
               {showBookmarks ? 'No Saved Dispatches' : 'Archive Empty'}
             </h2>
-            <p className="text-gray-400 mt-2">
-              {showBookmarks ? 'Bookmark stories to read them later offline.' : 'No dispatches found matching this criteria.'}
+            <p className="text-gray-400 mt-2 text-sm max-w-md mx-auto">
+              {showBookmarks 
+                ? 'You have not saved any dispatches yet. Click the bookmark icon on any dispatch to save it for offline reading.' 
+                : searchQuery
+                ? `No dispatches found matching "${searchQuery}". Try a different keyword.`
+                : 'No dispatches found matching this criteria.'}
             </p>
+            {(showBookmarks || searchQuery) && (
+              <button
+                onClick={() => { setShowBookmarks(false); setSearchQuery(''); }}
+                className="mt-6 inline-flex items-center gap-2 bg-[var(--color-nexus-dark)] hover:bg-[var(--color-nexus-red)] text-white text-xs font-bold uppercase tracking-widest px-6 py-2.5 rounded-sm transition-colors"
+              >
+                View Latest Headlines
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -643,13 +718,17 @@ function HomeContent() {
                       handleSelectArticle(leadArticle);
                     }}
                   >
-                    {leadArticle.thumbnail ? (
-                      <div className="relative aspect-[16/9] w-full max-h-[380px] overflow-hidden bg-gray-100 mb-4 rounded-sm">
+                    {leadArticle.thumbnail && !failedImageIds.has(leadArticle.id) ? (
+                      <div className="relative aspect-[16/9] w-full max-h-[380px] overflow-hidden bg-stone-100 mb-4 rounded-sm">
                         <Image
                           src={leadArticle.thumbnail}
                           alt={leadArticle.title}
                           fill
+                          sizes="(max-width: 1024px) 100vw, 66vw"
+                          referrerPolicy="no-referrer"
+                          priority
                           className="object-cover transition-transform duration-1000 ease-out"
+                          onError={() => setFailedImageIds(prev => new Set(prev).add(leadArticle.id))}
                         />
                         
                         {/* Top Right Controls on Hero */}
@@ -676,7 +755,7 @@ function HomeContent() {
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full bg-[var(--color-nexus-dark)] text-white p-8 md:p-12 mb-6 border-l-[8px] border-[var(--color-nexus-red)] relative rounded-sm shadow-md">
+                      <div className="w-full bg-[var(--color-nexus-dark)] text-white p-6 sm:p-8 md:p-12 mb-6 border-l-[8px] border-[var(--color-nexus-red)] relative rounded-sm shadow-md">
                         <div className="absolute top-4 right-4 z-20 flex gap-2">
                           <button 
                             onClick={() => {
@@ -700,7 +779,7 @@ function HomeContent() {
                         </div>
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-nexus-red)] mb-4 inline-block">NEXUS EDITORIAL</h3>
                         <button onClick={() => handleSelectArticle(leadArticle)} className="block text-left">
-                           <h2 className="font-serif text-3xl md:text-5xl font-black leading-tight hover:text-[var(--color-nexus-red)] transition-colors">
+                           <h2 className="font-serif text-2xl sm:text-3xl md:text-5xl font-black leading-tight hover:text-[var(--color-nexus-red)] transition-colors">
                              {leadArticle.title}
                            </h2>
                         </button>
@@ -719,7 +798,7 @@ function HomeContent() {
                       </span>
                     </div>
                     
-                    {leadArticle.thumbnail && (
+                    {leadArticle.thumbnail && !failedImageIds.has(leadArticle.id) && (
                       <button onClick={() => handleSelectArticle(leadArticle)} className="block text-left">
                         <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-tight mb-2 hover:text-[#D32F2F]">
                           {leadArticle.title}
@@ -763,7 +842,7 @@ function HomeContent() {
                           <span className="text-[var(--color-nexus-red)] text-[10px] font-black uppercase tracking-widest mb-1 block">
                             {article.source}
                           </span>
-                          <h4 className="text-[var(--color-nexus-dark)] text-lg font-bold leading-snug group-hover:text-[var(--color-nexus-red)] transition-colors font-serif line-clamp-2 mb-2 pr-6">
+                          <h4 className="text-[var(--color-nexus-dark)] text-base sm:text-lg font-bold leading-snug group-hover:text-[var(--color-nexus-red)] transition-colors font-serif line-clamp-2 mb-2 pr-6">
                             {article.title}
                           </h4>
                           <div className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
@@ -773,12 +852,15 @@ function HomeContent() {
                             </span>
                           </div>
                         </div>
-                        {article.thumbnail && (
-                          <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden bg-gray-100 hidden sm:block">
+                        {article.thumbnail && !failedImageIds.has(article.id) && (
+                          <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 overflow-hidden bg-stone-100 rounded-sm">
                             <Image
                               src={article.thumbnail}
                               alt={article.title}
                               fill
+                              sizes="96px"
+                              referrerPolicy="no-referrer"
+                              onError={() => setFailedImageIds(prev => new Set(prev).add(article.id))}
                               className="object-cover group-hover:scale-105 transition-transform duration-700"
                             />
                           </div>

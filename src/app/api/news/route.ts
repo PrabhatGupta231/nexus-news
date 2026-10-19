@@ -43,22 +43,63 @@ export interface NewsItem {
   content?: string;
 }
 
-function decodeHTMLEntities(text: string) {
+function decodeHTMLEntities(text: string): string {
+  if (!text) return '';
   const entities: Record<string, string> = {
     '&nbsp;': ' ',
     '&amp;': '&',
     '&quot;': '"',
+    '&apos;': "'",
+    '&#39;': "'",
+    '&#039;': "'",
     '&lt;': '<',
     '&gt;': '>',
-    '&#39;': "'",
     '&rsquo;': "'",
     '&lsquo;': "'",
+    '&#8216;': "'",
+    '&#8217;': "'",
     '&rdquo;': '"',
     '&ldquo;': '"',
-    '&mdash;': '-',
-    '&ndash;': '-',
+    '&#8220;': '"',
+    '&#8221;': '"',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&#8212;': '—',
+    '&#8211;': '–',
+    '&hellip;': '...',
+    '&#8230;': '...',
+    '&bull;': '•',
+    '&#8226;': '•',
   };
-  return text.replace(/&[a-zA-Z0-9#]+;/g, (match) => entities[match] || match);
+  let decoded = text.replace(/&[a-zA-Z0-9#]+;/g, (match) => {
+    if (entities[match]) return entities[match];
+    if (match.startsWith('&#x') || match.startsWith('&#X')) {
+      const code = parseInt(match.slice(3, -1), 16);
+      return !isNaN(code) ? String.fromCharCode(code) : match;
+    }
+    if (match.startsWith('&#')) {
+      const code = parseInt(match.slice(2, -1), 10);
+      return !isNaN(code) ? String.fromCharCode(code) : match;
+    }
+    return match;
+  });
+  // Clean up corrupted mojibake encoding artifacts
+  decoded = decoded
+    .replace(/â€™/g, "'")
+    .replace(/â€˜/g, "'")
+    .replace(/â€œ/g, '"')
+    .replace(/â€/g, '"')
+    .replace(/â€“/g, '–')
+    .replace(/\uFFFD/g, '')
+    .trim();
+  return decoded;
+}
+
+function isGarbledOrUnreadable(text: string): boolean {
+  if (!text || text.trim().length === 0) return true;
+  const questionMarks = (text.match(/[\?\uFFFD]/g) || []).length;
+  if (questionMarks > 5 && questionMarks / text.length > 0.25) return true;
+  return false;
 }
 
 function processSnippet(rawText: string): string {
@@ -68,19 +109,28 @@ function processSnippet(rawText: string): string {
   return text.length > 120 ? text.substring(0, 117) + '...' : text;
 }
 
-
-
 function isValidImage(url: string | null | undefined): boolean {
   if (!url || typeof url !== 'string' || url.trim() === '' || url === 'null' || url === 'undefined') return false;
   const lurl = url.toLowerCase();
-  if (lurl.includes('feedburner') || lurl.includes('1x1') || lurl.includes('pixel')) {
+  if (lurl.includes('feedburner') || lurl.includes('1x1') || lurl.includes('pixel') || lurl.includes('spacer') || lurl.includes('advertisement') || lurl.includes('doubleclick')) {
     return false;
   }
-  if (lurl.includes('google.com') || lurl.includes('googleusercontent.com') || lurl.includes('/logos/') || lurl.includes('/branding/')) {
+  if (
+    lurl.includes('google.com') || 
+    lurl.includes('googleusercontent.com') || 
+    lurl.includes('/logos/') || 
+    lurl.includes('/branding/') || 
+    lurl.includes('indian-emblem') || 
+    lurl.includes('emblem') || 
+    lurl.includes('header-logo') || 
+    lurl.includes('site-logo') || 
+    lurl.includes('favicon')
+  ) {
     return false;
   }
   try {
-    new URL(url);
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
     return true;
   } catch (e) {
     return false;
@@ -96,7 +146,7 @@ async function fetchOpenGraphImage(url: string): Promise<string | null> {
   if (!url) return null;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout as requested
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
 
     const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36' } });
     clearTimeout(timeoutId);
@@ -113,9 +163,10 @@ async function fetchOpenGraphImage(url: string): Promise<string | null> {
 
     if (imgUrl) {
       try {
-        return new URL(imgUrl, url).href;
+        const absoluteUrl = new URL(imgUrl, url).href;
+        return isValidImage(absoluteUrl) ? absoluteUrl : null;
       } catch (e) {
-        return imgUrl;
+        return isValidImage(imgUrl) ? imgUrl : null;
       }
     }
   } catch (err) {
@@ -169,6 +220,50 @@ function isEntertainment(title: string, snippet: string): boolean {
   return keywords.some(kw => text.includes(kw));
 }
 
+export function cleanSourceName(rawSource: string, feedTitle: string = '', fallback: string = '', stateName?: string): string {
+  let src = (rawSource || feedTitle || fallback || '').trim();
+  const upper = src.toUpperCase();
+
+  if (upper.includes('HINDU')) return 'The Hindu';
+  if (upper.includes('BOLLYWOOD HUNGAMA')) return 'Bollywood Hungama';
+  if (upper.includes('INDIAN EXPRESS')) return 'Indian Express';
+  if (upper.includes('PIB') || upper.includes('PRESS INFORMATION BUREAU')) return 'PIB';
+  if (upper.includes('LIVEMINT') || upper.includes('MINT')) return 'LiveMint';
+  if (upper.includes('BBC')) return 'BBC News';
+  if (upper.includes('NDTV')) return 'NDTV';
+  if (upper.includes('AMAR UJALA') || upper.includes('अमर उजाला')) return 'अमर उजाला';
+  if (upper.includes('JAGRAN') || upper.includes('दैनिक जागरण')) return 'दैनिक जागरण';
+  if (upper.includes('DAINIK BHASKAR') || upper.includes('दैनिक भास्कर')) return 'दैनिक भास्कर';
+  if (upper.includes('NAVBHARAT') || upper.includes('नवभारत')) return 'नवभारत टाइम्स';
+  if (upper.includes('HINDUSTAN') || upper.includes('हिन्दुस्तान')) return 'हिन्दुस्तान';
+
+  if (upper.includes('LOCATION:') || upper.includes('WHEN:') || upper.includes('GOOGLE NEWS') || upper.includes('GOOGLE समाचार') || upper.includes('SEARCH RECORDS')) {
+    if (stateName) {
+      if (stateName.toUpperCase() === 'UTTAR PRADESH' || stateName.toUpperCase() === 'UP') return 'UP Regional Desk';
+      return `${stateName} Regional Desk`;
+    }
+    return 'Regional Desk';
+  }
+
+  if (src.includes('|')) {
+    const parts = src.split('|').map(p => p.trim());
+    src = parts[parts.length - 1] || parts[0];
+  } else if (src.includes(' - ')) {
+    const parts = src.split(' - ').map(p => p.trim());
+    src = parts[parts.length - 1] || parts[0];
+  }
+
+  src = src.replace(/NEWS SEARCH RECORDS FOUND \d+/gi, 'News')
+           .replace(/LATEST NATIONAL HEADLINES & BREAKING NEWS/gi, 'National News')
+           .trim();
+
+  if (src.length > 25) {
+    src = src.substring(0, 25).trim();
+  }
+
+  return src || 'Nexus Editorial';
+}
+
 function extractSourceName(item: any, feedTitle: string, fallback: string, stateName?: string): string {
   let src = '';
   if (item.source) {
@@ -178,21 +273,7 @@ function extractSourceName(item: any, feedTitle: string, fallback: string, state
       src = item.source._;
     }
   }
-  
-  if (!src) {
-    src = feedTitle || fallback;
-  }
-
-  const upperSrc = src.toUpperCase();
-  if (upperSrc.includes('LOCATION:') || upperSrc.includes('WHEN:') || upperSrc.includes('GOOGLE NEWS') || upperSrc.includes('GOOGLE समाचार')) {
-    if (stateName) {
-      if (stateName.toUpperCase() === 'UTTAR PRADESH' || stateName.toUpperCase() === 'UP') return 'UP REGIONAL DESK';
-      return `${stateName.toUpperCase()} REGIONAL DESK`;
-    }
-    return 'REGIONAL DESK';
-  }
-  
-  return src;
+  return cleanSourceName(src, feedTitle, fallback, stateName);
 }
 
 // Helper to slugify titles for deduplication
@@ -334,7 +415,19 @@ export async function GET(request: Request) {
           feed.items.forEach((item: any) => {
             const rawSnippet = item.description || item.contentSnippet || item['content:encoded'] || '';
             const articleTitle = item.title ? decodeHTMLEntities(item.title) : 'No Title';
-            const snippetText = processSnippet(rawSnippet);
+            
+            // Filter garbled or empty articles
+            if (isGarbledOrUnreadable(articleTitle)) return;
+            const isHindiText = /[\u0900-\u097F]/.test(articleTitle);
+            if (langParam === 'en' && isHindiText) return;
+            if (langParam === 'hi' && !isHindiText && categoryParam !== 'entertainment') {
+              // In Hindi mode, prefer Hindi dispatches
+            }
+
+            let snippetText = processSnippet(rawSnippet);
+            if (!snippetText && articleTitle) {
+              snippetText = `${articleTitle}. Read verified dispatch on Nexus News.`;
+            }
             
             const isCA = category !== 'state-news' && isCurrentAffairs(articleTitle, snippetText);
             const isEnt = category !== 'state-news' && isEntertainment(articleTitle, snippetText);
@@ -346,12 +439,12 @@ export async function GET(request: Request) {
                 title: articleTitle,
                 link: item.link || '#',
                 pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-                source: isCityFeed ? source.toUpperCase() : extractSourceName(item, feed.title || '', source, stateName),
+                source: isCityFeed ? cleanSourceName(source) : extractSourceName(item, feed.title || '', source, stateName),
                 snippet: snippetText,
                 thumbnail,
                 category: finalCategory,
                 stateName,
-                lang
+                lang: langParam
               }))
             );
           });
@@ -381,8 +474,6 @@ export async function GET(request: Request) {
       counts.science = allItems.filter(i => i.category === 'science').length;
       counts.world = allItems.filter(i => i.category === 'world').length;
       counts['state-news'] = allItems.filter(i => i.category === 'state-news').length;
-
-
     }
 
   const responseData = { counts, lastUpdated, articles: allItems };

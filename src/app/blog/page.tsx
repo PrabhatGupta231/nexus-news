@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllPosts } from '@/lib/blog';
 import { format } from 'date-fns';
+import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
   title: 'Blog - Insights & Articles',
@@ -13,12 +14,25 @@ export default function BlogIndex() {
 
   return (
     <div className="min-h-screen bg-[var(--color-nexus-bg)] text-[var(--color-nexus-dark)] font-sans">
-      <header className="w-full py-16 flex flex-col items-center justify-center border-b border-[var(--color-nexus-border)] bg-white">
-        <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter font-serif text-[var(--color-nexus-dark)]">
-          NEXUS<span className="text-[var(--color-nexus-red)] ml-3">BLOG</span>
+      {/* Top Navbar */}
+      <nav className="w-full py-3.5 px-4 sm:px-8 border-b border-[var(--color-nexus-border)] bg-white/90 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between">
+        <Link 
+          href="/" 
+          className="text-stone-600 hover:text-[var(--color-nexus-red)] flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Dispatches
+        </Link>
+        <Link href="/" className="text-lg font-black uppercase tracking-tighter font-serif">
+          NEXUS<span className="text-[var(--color-nexus-red)] ml-1">NEWS</span>
+        </Link>
+      </nav>
+
+      <header className="w-full py-12 md:py-16 flex flex-col items-center justify-center border-b border-[var(--color-nexus-border)] bg-white">
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black uppercase tracking-tighter font-serif text-[var(--color-nexus-dark)]">
+          NEXUS<span className="text-[var(--color-nexus-red)] ml-3">EDITORIALS</span>
         </h1>
-        <p className="mt-4 text-gray-500 font-bold uppercase tracking-[0.2em] text-xs">
-          Insights, Analysis & Editorial Dispatches
+        <p className="mt-3 text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px] sm:text-xs text-center px-4">
+          In-Depth Insights, Analysis & Civil Services Dispatches
         </p>
       </header>
 

@@ -85,28 +85,30 @@ export default function NewsCard({
 
       {/* Image Container (Fixed Aspect Ratio) */}
       {article.thumbnail && !imageError ? (
-        <div className="relative w-full pt-[56.25%] overflow-hidden bg-gray-100">
+        <div className="relative w-full pt-[56.25%] overflow-hidden bg-stone-100">
           <Image
             src={article.thumbnail}
             alt={article.title}
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            referrerPolicy="no-referrer"
             className="object-cover group-hover:scale-105 transition-transform duration-700"
             onError={() => setImageError(true)}
           />
-          <div className="absolute top-4 left-4 z-10">
-            <span className="bg-[#1C1917] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0 shadow-sm">
+          <div className="absolute top-4 left-4 z-10 max-w-[80%]">
+            <span className="bg-[#1C1917]/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded shadow-sm truncate block">
               {article.source}
             </span>
           </div>
         </div>
       ) : (
-        <div className="w-full pt-[56.25%] relative bg-gradient-to-br from-stone-100 to-stone-200 border-b border-stone-200 flex flex-col items-center justify-center text-stone-400 overflow-hidden">
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+        <div className="w-full pt-[56.25%] relative bg-gradient-to-br from-stone-100 via-stone-200 to-stone-100 border-b border-stone-200 flex flex-col items-center justify-center text-stone-400 overflow-hidden">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 select-none">
             <span className="text-2xl font-serif font-black tracking-widest text-stone-300">NEXUS</span>
             <span className="text-[10px] tracking-wider uppercase text-stone-400 font-mono mt-1 whitespace-nowrap flex-shrink-0">Editorial Dispatch</span>
           </div>
-          <div className="absolute top-4 left-4 z-10">
-            <span className="bg-[#1C1917] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0 shadow-sm border border-[var(--color-nexus-border)]">
+          <div className="absolute top-4 left-4 z-10 max-w-[80%]">
+            <span className="bg-[#1C1917]/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded shadow-sm border border-stone-700/50 truncate block">
               {article.source}
             </span>
           </div>

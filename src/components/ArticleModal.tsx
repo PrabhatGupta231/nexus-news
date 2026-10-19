@@ -144,29 +144,31 @@ export default function ArticleModal({ article, onClose, isPastDate, isBookmarke
           <div className="border-b border-[#E7E5E0] my-4"></div>
 
           {article.thumbnail && !imageError && (
-            <div className="relative w-full aspect-video my-6 bg-gray-100 rounded-lg overflow-hidden border border-[#E7E5E0]">
+            <div className="relative w-full aspect-video my-4 sm:my-6 bg-stone-100 rounded-lg overflow-hidden border border-[#E7E5E0]">
               <Image 
                 src={article.thumbnail} 
                 alt={article.title} 
                 fill 
+                sizes="(max-width: 768px) 100vw, 672px"
+                referrerPolicy="no-referrer"
                 className="object-cover" 
                 onError={() => setImageError(true)}
               />
             </div>
           )}
 
-          <div className="prose prose-lg max-w-none mb-8">
+          <div className="prose prose-stone prose-base sm:prose-lg max-w-none mb-8">
             <style jsx global>{`
               .article-body p { margin-bottom: 1.5rem; }
             `}</style>
             
             {loadingContent && !fullContent && !article.content ? (
               <>
-                <p className="text-[16px] md:text-[17px] leading-relaxed text-stone-800 font-serif">
+                <p className="text-[15px] sm:text-[17px] leading-relaxed text-stone-800 font-serif">
                   {article.snippet}
                 </p>
-                <div className="flex items-center justify-center p-8 text-stone-400 font-sans text-sm animate-pulse">
-                   लोड हो रहा है... (Fetching complete story)
+                <div className="flex items-center justify-center p-8 text-stone-400 font-sans text-xs sm:text-sm animate-pulse">
+                   {article.lang === 'hi' ? 'लोड हो रहा है... (Fetching complete story)' : 'Loading complete dispatch...'}
                 </div>
               </>
             ) : fullContent ? (

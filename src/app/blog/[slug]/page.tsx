@@ -143,6 +143,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
               src={post.meta.coverImage}
               alt={post.meta.title}
               fill
+              sizes="(max-width: 768px) 100vw, 768px"
+              referrerPolicy="no-referrer"
               className="object-cover"
               priority
             />

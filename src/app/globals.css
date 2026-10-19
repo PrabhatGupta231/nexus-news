@@ -11,9 +11,13 @@
 }
 
 @layer base {
-  body {
+  html, body {
     background-color: var(--color-nexus-bg);
     color: var(--color-nexus-dark);
+    overflow-x: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 }
 
